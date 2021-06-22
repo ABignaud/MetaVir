@@ -6,8 +6,10 @@
 
 """
 MetaVir pipeline for generating and manipulating phage MAGs.
+
 usage:
-    metator [-hv] <command> [<args>...]
+    metavir [-hv] <command> [<args>...]
+    
 options:
     -h, --help              shows the help
     -v, --version           shows the version
@@ -24,8 +26,8 @@ The subcommands are:
 
 from docopt import docopt
 from docopt import DocoptExit
-import metator.commands as commands
-from metator.version import __version__
+import metavir.commands as commands
+from metavir.version import __version__
 
 
 def main():
