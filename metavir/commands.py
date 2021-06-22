@@ -2,8 +2,11 @@
 # coding: utf-8
 
 from docopt import docopt
+import metavir.binning as mtb
 import metavir.host as mth
 import metavir.io as mio
+import os
+import shutil
 
 
 class AbstractCommand:
@@ -71,3 +74,58 @@ class Host(AbstractCommand):
             phages_list_id,
             self.args["--outfile"],
         )
+
+
+class Binning(AbstractCommand):
+    """Bin phages contigs.
+
+    usage:
+        binning --depth=STR --fasta=STR --host=STR [--no-clean-up]
+        [--outdir=STR] [--threads=1] [--tmpdir=STR]
+
+    options:
+        -d, --depth=STR     Path to the depth file from metabat2 script:
+                            jgi_summarize_bam_contig_depths.
+        -f, --fasta=STR     Path to the fasta file with tha phage contigs
+                            sequences.
+        -h, --host=STR      Path to the bacterial host associated to the phages
+                            contigs generated with metavir host.
+        -N, --no-clean-up   If enabled, remove the temporary files.
+        -o, --outdir=STR    Path to the output directory where the output will
+                            will be written. Default current directory.
+        -t, --threads=INT   Number of threads to use for checkV. [Default: 1]
+        -T, --tmpdir=STR       Path to temporary directory. [Default: ./tmp]
+    """
+
+    def execute(self):
+        # Defined the temporary directory.
+        if not self.args["--tmpdir"]:
+            self.args["--tmpdir"] = "./tmp"
+        tmp_dir = mio.generate_temp_dir(self.args["--tmpdir"])
+        # Defined the output directory and output file names.
+        if not self.args["--outdir"]:
+            self.args["--outdir"] = "."
+        os.makedirs(self.args["--outdir"], exist_ok=True)
+
+        # Set remove tmp for checkV.
+        if not self.args["--no-clean-up"]:
+            remove_tmp = True
+        else:
+            remove_tmp = False
+
+        # Run the phages binning
+        mtb.phage_binning(
+            self.args["--depth"],
+            self.args["--fasta"],
+            self.args["--host"],
+            self.args["--outdir"],
+            remove_tmp,
+            int(self.args["--threads"]),
+            tmp_dir,
+        )
+
+        # Delete pyfastx index:
+        os.remove(self.args["--fasta"] + ".fxi")
+        # Delete the temporary folder.
+        if remove_tmp:
+            shutil.rmtree(tmp_dir)
