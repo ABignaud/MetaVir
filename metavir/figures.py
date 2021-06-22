@@ -1,5 +1,15 @@
+#!/usr/bin/env python3
+# coding: utf-8
+
+"""Module to plot phages binning result.
+
+Core function to plot:
+    - build_vmags_summary
+    - pie_bins_size_distribution
+"""
+
+
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -95,7 +105,6 @@ def pie_bins_size_distribution(checkv_summary, out_file):
             "#abd9e9",
             "#fdae61",
             "#a50026",
-            "k",
         ],
     )
     plt.legend(labels, bbox_to_anchor=(0.9, 0.0, 1.0, 1.0), loc="upper right")
@@ -116,5 +125,97 @@ def pie_bins_size_distribution(checkv_summary, out_file):
         fontdict=None,
     )
     plt.title("Size proportion of phage bins depending on their completness.")
+    # Save the file
+    plt.savefig(out_file, dpi=200, bbox_inches="tight")
+
+
+def barplot_bins_size(labels, list_checkv_summary, out_file):
+    """Plot the size distribution of the bins quality of different experiments 
+    or methods.
+
+    Parameters:
+    -----------
+    labels : list os str
+        List of the labels of the different experiments/methods.
+    list_checkv_summary : list of pandas.DataFrame
+        List of the checkV quality summary tables.
+    out_file : str
+        Path to the output file.
+    """
+    # Create an empty dataframe.
+    stacked_data = pd.DataFrame(
+        [[0] * 5] * len(labels),
+        columns=[">90", ">70", ">50", ">30", "<30"],
+        index=labels,
+    )
+
+    # Extract vMAGs summary and add it to the table.
+    for i, checkv_summary in enumerate(list_checkv_summary):
+        mags_summary = build_vmags_summary(checkv_summary)
+        stacked_data.loc[labels[i], :] = list(mags_summary["size"])
+
+    # Plot the table.
+    stacked_data = stacked_data.apply(lambda x: x * 100 / sum(x), axis=1)
+    stacked_data.plot(
+        kind="bar",
+        stacked=True,
+        color=[
+            "#313695",
+            "#4575b4",
+            "#abd9e9",
+            "#fdae61",
+            "#a50026",
+        ],
+    )
+    plt.title("Phages bins quality distribution")
+    plt.xlabel("Experiment")
+    plt.ylabel("Percentage bins size (%)")
+    plt.legend(loc="upper right", bbox_to_anchor=(0.2, 0.0, 1.0, 1.0))
+    # Save the file
+    plt.savefig(out_file, dpi=200, bbox_inches="tight")
+
+
+def barplot_bins_number(labels, list_checkv_summary, out_file):
+    """Plot the number distribution of the bins quality of different experiments 
+    or methods.
+
+    Parameters:
+    -----------
+    labels : list os str
+        List of the labels of the different experiments/methods.
+    list_checkv_summary : list of pandas.DataFrame
+        List of the checkV quality summary tables.
+    out_file : str
+        Path to the output file.
+    """
+    # Create an empty dataframe.
+    stacked_data = pd.DataFrame(
+        [[0] * 5] * len(labels),
+        columns=[">90", ">70", ">50", ">30", "<30"],
+        index=labels,
+    )
+
+    # Extract vMAGs summary and add it to the table.
+    for i, checkv_summary in enumerate(list_checkv_summary):
+        mags_summary = build_vmags_summary(checkv_summary)
+        stacked_data.loc[labels[i], :] = list(mags_summary["bins"])
+
+    # Plot the table.
+    stacked_data = stacked_data.apply(lambda x: x * 100 / sum(x), axis=1)
+    stacked_data.plot(
+        kind="bar",
+        stacked=True,
+        color=[
+            "#313695",
+            "#4575b4",
+            "#abd9e9",
+            "#fdae61",
+            "#a50026",
+        ],
+    )
+    plt.title("Phages bins quality distribution")
+    plt.xlabel("Experiment")
+    plt.ylabel("Percentage bins size (%)")
+    plt.legend(loc="upper right", bbox_to_anchor=(0.2, 0.0, 1.0, 1.0))
     # Save the file
     plt.savefig(out_file, dpi=200, bbox_inches="tight")

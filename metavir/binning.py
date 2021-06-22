@@ -304,7 +304,13 @@ def phage_binning(
     fasta_phages_bins = join(out_dir, "phages_binned.fa")
     checkv_dir_contigs = join(out_dir, "checkV_contigs")
     checkv_dir_bins = join(out_dir, "checkV_bins")
-    figure_file = join(out_dir, "pie_phage_bins_size_distribution.png")
+    figure_file_pie = join(out_dir, "pie_phage_bins_size_distribution.png")
+    figure_file_bar_size = join(
+        out_dir, "barplot_phage_bins_size_distribution.png"
+    )
+    figure_file_bar_nb = join(
+        out_dir, "barplot_phage_bins_numbers_distribution.png"
+    )
 
     # Import host data from the previous step.
     host_data = pd.read_csv(host_data_file, sep="\t", index_col=0)
@@ -334,9 +340,20 @@ def phage_binning(
     run_checkv(fasta_phages_bins, checkv_dir_bins, remove_tmp, threads)
 
     # Plot figures
-    checkv_summary = pd.read_csv(
+    checkv_summary_contigs = pd.read_csv(
+        join(checkv_dir_contigs, "quality_summary.tsv"), sep="\t"
+    )
+    checkv_summary_bins = pd.read_csv(
         join(checkv_dir_bins, "quality_summary.tsv"), sep="\t"
     )
-    mtf.pie_bins_size_distribution(
-        checkv_summary, figure_file
+    mtf.pie_bins_size_distribution(checkv_summary, figure_file)
+    mtf.barplot_bins_size(
+        ["Contigs", "Bins"],
+        [checkv_summary_contigs, checkv_summary_bins],
+        figure_file_bar_size,
+    )
+    mtf.barplot_bins_number(
+        ["Contigs", "Bins"],
+        [checkv_summary_contigs, checkv_summary_bins],
+        figure_file_bar_nb,
     )

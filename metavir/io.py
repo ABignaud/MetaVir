@@ -174,9 +174,9 @@ def write_phage_data(phage_data, out_file):
         Path to write the phage data information.
     """
 
-    # Drop the phage id column which is the concatenation of the two previous 
+    # Drop the phage id column which is the concatenation of the two previous
     # ones.
     phage_data.drop("id", inplace=True, axis=1)
-    
+
     # Write the data frame
     phage_data.to_csv(out_file, sep="\t")
