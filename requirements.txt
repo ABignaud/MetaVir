@@ -1,0 +1,6 @@
+checkv
+docopt
+networkx
+numpy
+pandas
+pyfastx
