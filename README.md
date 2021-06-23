@@ -28,7 +28,14 @@ pip3 install -e git+https://github.com/ABignaud/MetaVir.git@master#egg=metator
 
 ### Using docker container
 
-Coming soon...
+```sh
+git clone https://github.com/ABignaud/MetaVir.git
+cd MetaVir
+docker build --tag metavir .
+docker run metavir {hsot|binning} [parameters]
+```
+
+A docker image will be soon available.
 
 ## Usage
 
