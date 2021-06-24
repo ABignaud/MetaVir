@@ -50,6 +50,7 @@ There are two main steps in the metaVir pipeline, which must be run in the follo
 
 There are a number of other, optional, miscellaneous actions:
 
+* `pipeline` : Run both steps sequentially.
 * `version` : display current version number.
 * `help` : display help message.
 

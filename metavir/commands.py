@@ -1,7 +1,28 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
+"""Abstract command classes for MetaVir
+
+This module contains all classes related to MetaVir commands:
+    - host
+    - binning
+    - pipeline
+
+Note
+----
+Structure based on Rémy Greinhofer (rgreinho) tutorial on subcommands in docopt
+: https://github.com/rgreinho/docopt-subcommands-example
+abignaud, 20201118
+
+Raises
+------
+NotImplementedError
+    Will be raised if AbstractCommand is called for some reason instead of one
+    of its children.
+"""
+
 from docopt import docopt
+from os.path import join
 import metavir.binning as mtb
 import metavir.host as mth
 import metavir.io as mio
@@ -56,7 +77,7 @@ class Host(AbstractCommand):
     def execute(self):
         # Defined the output file if none are given
         if not self.args["--outfile"]:
-            self.args["--outfile"] = "./phages_host.tsv"
+            self.args["--outfile"] = "./phages_data_host.tsv"
 
         # Import the files
         binning_result = mio.import_anvio_binning(self.args["--binning"])
@@ -80,21 +101,22 @@ class Binning(AbstractCommand):
     """Bin phages contigs.
 
     usage:
-        binning --depth=STR --fasta=STR --host=STR [--no-clean-up]
+        binning --depth=STR --fasta=STR --phages-data=STR [--no-clean-up]
         [--outdir=STR] [--threads=1] [--tmpdir=STR]
 
     options:
-        -d, --depth=STR     Path to the depth file from metabat2 script:
-                            jgi_summarize_bam_contig_depths.
-        -f, --fasta=STR     Path to the fasta file with tha phage contigs
-                            sequences.
-        -h, --host=STR      Path to the bacterial host associated to the phages
-                            contigs generated with metavir host.
-        -N, --no-clean-up   If enabled, remove the temporary files.
-        -o, --outdir=STR    Path to the output directory where the output will
-                            will be written. Default current directory.
-        -t, --threads=INT   Number of threads to use for checkV. [Default: 1]
-        -T, --tmpdir=STR       Path to temporary directory. [Default: ./tmp]
+        -d, --depth=STR         Path to the depth file from metabat2 script:
+                                jgi_summarize_bam_contig_depths.
+        -f, --fasta=STR         Path to the fasta file with tha phage contigs
+                                sequences.
+        -p, --phages-data=STR   Path to the bacterial host associated to the 
+                                phages contigs generated with metavir host.
+        -N, --no-clean-up       If enabled, remove the temporary files.
+        -o, --outdir=STR        Path to the output directory where the output
+                                will be written. Default current directory.
+        -t, --threads=INT       Number of threads to use for checkV.
+                                [Default: 1]
+        -T, --tmpdir=STR        Path to temporary directory. [Default: ./tmp]
     """
 
     def execute(self):
@@ -117,15 +139,95 @@ class Binning(AbstractCommand):
         mtb.phage_binning(
             self.args["--depth"],
             self.args["--fasta"],
-            self.args["--host"],
+            self.args["--phages-data"],
             self.args["--outdir"],
             remove_tmp,
             int(self.args["--threads"]),
             tmp_dir,
         )
 
-        # Delete pyfastx index:
-        os.remove(self.args["--fasta"] + ".fxi")
         # Delete the temporary folder.
         if remove_tmp:
             shutil.rmtree(tmp_dir)
+            # Delete pyfastx index:
+            os.remove(self.args["--fasta"] + ".fxi")
+            
+
+class Pipeline(AbstractCommand):
+    """Run all commands in one command.
+
+    usage: 
+        pipeline --binning=STR --contig-data=STR --depth=STR --fasta=STR 
+        [--outdir=STR] --network=STR --phages=STR  [--no-clean-up] [--threads=1]
+        [--tmpdir=STR]
+    
+    options:
+        -b, --binning=STR       Path to the anvio binning file.
+        -c, --contig-data=STR   Path to the MetaTOR contig data file.
+        -d, --depth=STR         Path to the depth file from metabat2 script:
+                                jgi_summarize_bam_contig_depths.
+        -f, --fasta=STR         Path to the fasta file with tha phage contigs
+                                sequences.
+        -H, --host=STR          Path to the bacterial host associated to the
+                                phages contigs generated with metavir host.
+        -n, --network=STR       Path to the network file.
+        -N, --no-clean-up       If enabled, remove the temporary files.
+        -o, --outdir=STR        Path to the output directory where the output 
+                                will be written. Default current directory.
+        -p, --phages=STR        Path to the file with phages contigs list.
+        -t, --threads=INT       Number of threads to use for checkV.
+                                [Default: 1]
+        -T, --tmpdir=STR        Path to temporary directory. [Default: ./tmp]
+    """
+
+    def execute(self):
+
+        # Defined the temporary directory.
+        if not self.args["--tmpdir"]:
+            self.args["--tmpdir"] = "./tmp"
+        tmp_dir = mio.generate_temp_dir(self.args["--tmpdir"])
+        # Defined the output directory and output file names.
+        if not self.args["--outdir"]:
+            self.args["--outdir"] = "."
+        os.makedirs(self.args["--outdir"], exist_ok=True)
+        
+        # Set remove tmp for checkV.
+        if not self.args["--no-clean-up"]:
+            remove_tmp = True
+        else:
+            remove_tmp = False
+            
+        # Import the files
+        binning_result = mio.import_anvio_binning(self.args["--binning"])
+        phages_list = mio.import_phages_contigs(self.args["--phages"])
+        contig_data, phages_list_id = mio.import_contig_data_phages(
+            self.args["--contig-data"], binning_result, phages_list
+        )
+        network = mio.import_network(self.args["--network"])
+        out_file = join(self.args["--outdir"], "phages_data_host.tsv")
+
+        # Run the host detection
+        mth.host_detection(
+            network,
+            contig_data,
+            phages_list,
+            phages_list_id,
+            out_file,
+        )
+
+        # Run the phages binning
+        mtb.phage_binning(
+            self.args["--depth"],
+            self.args["--fasta"],
+            out_file,
+            self.args["--outdir"],
+            remove_tmp,
+            int(self.args["--threads"]),
+            tmp_dir,
+        )
+
+        # Delete the temporary folder.
+        if remove_tmp:
+            shutil.rmtree(tmp_dir)
+            # Delete the pyfastx index.
+            os.remove(self.args["--fasta"] + ".fxi")

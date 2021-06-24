@@ -26,7 +26,7 @@ from metavir.log import logger
 from os.path import join
 
 
-def build_phage_depth(contigs_file, depth_file, host_data, phage_depth_file):
+def build_phage_depth(contigs_file, depth_file, phages_data, phage_depth_file):
     """Build phage depth form the whole assembly depth file from metabat script.
 
     Parameters:
@@ -36,7 +36,7 @@ def build_phage_depth(contigs_file, depth_file, host_data, phage_depth_file):
         in the same order as the depth file will be written.
     depth_file : str
         Path to the wholed depth file from Metabat2 script.
-    host_data : pandas.DataFrame
+    phages_data : pandas.DataFrame
         Table with the phage contig names as index and the detected bacterial
         bins as column.
     phage_depth_file : str
@@ -47,7 +47,7 @@ def build_phage_depth(contigs_file, depth_file, host_data, phage_depth_file):
     whole_depth = pd.read_csv(depth_file, sep="\t")
 
     # Extract contigs name list.
-    phage_list = list(host_data.index)
+    phage_list = list(phages_data.Name)
 
     # Extract line of the phage contigs
     mask = []
@@ -88,29 +88,29 @@ def generate_phage_bins(phages_data):
     """
 
     # Creates an unique ID for each future bin.
-    phages_data["id"] = (
-        phages_data.host + "___" + list(map(str, phages_data.bin))
+    phages_data["tmp"] = (
+        phages_data.Host + "___" + list(map(str, phages_data.Metabat_bin))
     )
 
     # Create a new column with the bin id information added.
     bins_ids = {}
     phage_bins = {}
-    phages_data["bin_id"] = 0
+    phages_data["MetaVir_bin"] = 0
     bin_id = 0
     for contig in phages_data.index:
-        phage_id = phages_data.loc[contig, "id"]
+        phage_id = phages_data.loc[contig, "tmp"]
         # Test if the phage id have been already seen.
         try:
             bin_id_old = bins_ids[phage_id]
-            phages_data.loc[contig, "bin_id"] = bin_id_old
-            phage_bins[bin_id_old].append(contig)
+            phages_data.loc[contig, "MetaVir_bin"] = bin_id_old
+            phage_bins[bin_id_old].append(phages_data.loc[contig, "Name"])
         # Increment the bin id if it's the first time the phage id have been
         # seen.
         except KeyError:
             bin_id += 1
             bins_ids[phage_id] = bin_id
-            phages_data.loc[contig, "bin_id"] = bin_id
-            phage_bins[bin_id] = [contig]
+            phages_data.loc[contig, "MetaVir_bin"] = bin_id
+            phage_bins[bin_id] = [phages_data.loc[contig, "Name"]]
     return phages_data, phage_bins
 
 
@@ -258,14 +258,14 @@ def run_metabat(
     process.communicate()
 
     # Import metabat result as a pandas dataframe and return it.
-    metabat = pd.read_csv(outfile, sep="\t", index_col=0, names=["bin"])
+    metabat = pd.read_csv(outfile, sep="\t", index_col=False, names=["Name", "Metabat_bin"])
     return metabat
 
 
 def phage_binning(
     depth_file,
     fasta_phages_contigs,
-    host_data_file,
+    phages_data_file,
     out_dir,
     remove_tmp,
     threads,
@@ -283,7 +283,7 @@ def phage_binning(
     fasta_phages_contigs : str
         Path to the fasta containing the phages sequences. It could contain
         other sequences.
-    host_data_file : str
+    phages_data_file : str
         Path to the output file from metavir host detection workflow.
     out_dir : str
         Path to the directory where to write the output data.
@@ -299,8 +299,8 @@ def phage_binning(
     phage_depth_file = join(tmp_dir, "phage_depth.txt")
     contigs_file = join(tmp_dir, "phage_contigs.txt")
     temp_fasta = join(tmp_dir, "phages.fa")
-    metabat_output = join(out_dir, "metabat_phages_binning.txt")
-    phage_data_file = join(out_dir, "phage_data.tsv")
+    metabat_output = join(out_dir, "metabat_phages_binning.tsv")
+    phage_data_file = join(out_dir, "phage_data_final.tsv")
     fasta_phages_bins = join(out_dir, "phages_binned.fa")
     checkv_dir_contigs = join(out_dir, "checkV_contigs")
     checkv_dir_bins = join(out_dir, "checkV_bins")
@@ -308,15 +308,15 @@ def phage_binning(
     figure_file_bar_size = join(
         out_dir, "barplot_phage_bins_size_distribution.png"
     )
-    figure_file_bar_nb = join(
-        out_dir, "barplot_phage_bins_numbers_distribution.png"
-    )
+    # figure_file_bar_nb = join(
+    #     out_dir, "barplot_phage_bins_numbers_distribution.png"
+    # )
 
     # Import host data from the previous step.
-    host_data = pd.read_csv(host_data_file, sep="\t", index_col=0)
+    phages_data = pd.read_csv(phages_data_file, sep="\t", index_col=0)
 
     # Launch metabat binning.
-    build_phage_depth(contigs_file, depth_file, host_data, phage_depth_file)
+    build_phage_depth(contigs_file, depth_file, phages_data, phage_depth_file)
     metabat = run_metabat(
         contigs_file,
         fasta_phages_contigs,
@@ -326,7 +326,7 @@ def phage_binning(
     )
 
     # Make binning based on both metabat binning and host detection.
-    phages_data = host_data.merge(metabat, left_index=True, right_index=True)
+    phages_data = phages_data.merge(metabat)
     phages_data, phage_bins = generate_phage_bins(phages_data)
     mio.write_phage_data(phages_data, phage_data_file)
 
@@ -346,14 +346,14 @@ def phage_binning(
     checkv_summary_bins = pd.read_csv(
         join(checkv_dir_bins, "quality_summary.tsv"), sep="\t"
     )
-    mtf.pie_bins_size_distribution(checkv_summary, figure_file)
+    mtf.pie_bins_size_distribution(checkv_summary_bins, figure_file)
     mtf.barplot_bins_size(
         ["Contigs", "Bins"],
         [checkv_summary_contigs, checkv_summary_bins],
         figure_file_bar_size,
     )
-    mtf.barplot_bins_number(
-        ["Contigs", "Bins"],
-        [checkv_summary_contigs, checkv_summary_bins],
-        figure_file_bar_nb,
-    )
+    # mtf.barplot_bins_number(
+    #     ["Contigs", "Bins"],
+    #     [checkv_summary_contigs, checkv_summary_bins],
+    #     figure_file_bar_nb,
+    # )

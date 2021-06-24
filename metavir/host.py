@@ -24,7 +24,7 @@ class Subnetwork:
             self.nodes.append(edge[1])
             self.weights.append(edge[2])
         self.len = len(self.weights)
-        self.binned = False
+        self.scored = False
 
     def setScore(self):
         """Set scores for each associated contigs. The score is just a ratio of
@@ -50,14 +50,13 @@ class Subnetwork:
 
         Parameters:
         -----------
-        contig_data : dict
-            Dictionnary with the contig name as keys and with the values of the
-            bin names, and either if the contig is binned and if it's a phage
-            contig. The name of the keys are "bin", "binned", "phage".
+        contig_data : pandas.DataFrame:
+            Table with the contig information given with more column with the given
+            anvio binning and the phage annotation.
         """
         self.bins = dict()
         for i in range(self.len):
-            node = str(self.nodes[i])
+            node = self.nodes[i] - 1
             score = self.score[i]
             # Uncomment to add virus as bins.
             # if contig_data[node]["virus"]:
@@ -65,12 +64,12 @@ class Subnetwork:
             #         self.bins[contig_data[node]["name"]]["score"] += score
             #     except KeyError:
             #         self.bins[contig_data[node]["name"]] = {"score" : score}
-            if contig_data[node]["binned"] and not contig_data[node]["phage"]:
+            if contig_data.loc[node, "Binned"] and not contig_data.loc[node, "Phage"]:
                 try:
-                    self.bins[contig_data[node]["bin"]]["score"] += score
+                    self.bins[contig_data.loc[node, "Anvio_bin"]]["score"] += score
                 except KeyError:
-                    self.bins[contig_data[node]["bin"]] = {"score": score}
-        self.binned = True
+                    self.bins[contig_data.loc[node, "Anvio_bin"]] = {"score": score}
+        self.scored = True
 
     def getMaxBinScore(self, contig_data=None):
         """Return highest score and the associated bin.
@@ -83,7 +82,7 @@ class Subnetwork:
         float:
             Highest score value (bin score).
         """
-        if not self.binned:
+        if not self.scored:
             self.setBinScore(contig_data)
         max_score = 0
         max_bin = "-"
@@ -138,30 +137,28 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
     """
     # Compute the score with the subnetwork and return bins in each categories
     # and build the associated table.
-    host_data = pd.DataFrame(
-        ["-"] * len(phages_list_id), index=phages_list, columns=["host"]
-    )
+    phage_data = pd.DataFrame(contig_data.loc[phages_list_id, :]) 
+    phage_data["Host"] = "ND" 
     A, B, C = 0, 0, 0
     for contig_id in phages_list_id:
-        network_id = int(contig_id)
-        contig = contig_data[contig_id]["name"]
+        network_id = contig_id + 1
+        contig = contig_data.loc[contig_id, "Name"]
         subnetwork = network.edges(network_id, data="weight")
         sub = Subnetwork(subnetwork)
         sub.setScore()
         sub.setBinScore(contig_data)
         bin_name, score = sub.getMaxBinScore()
         count = sub.getBinScore()
-        mask = host_data.index == contig_data[contig_id]["name"]
         if count == 0:
             C += 1
-            host_data.loc[mask, "host"] = "No associated bin. ID: " + str(C)
+            phage_data.loc[contig_id, "Host"] = "No associated bin. ID: " + str(C)
         elif count == 1:
             A += 1
-            host_data.loc[mask, "host"] = bin_name
+            phage_data.loc[contig_id, "Host"] = bin_name
         else:
             B += 1
-            host_data.loc[
-                mask, "host"
+            phage_data.loc[
+                contig_id, "host"
             ] = "More than one associated bin. ID: " + str(B)
 
     logger.info("{0} phages associated with one bin.".format(A))
@@ -169,5 +166,5 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
     logger.info("{0} phages associated with no bin.".format(C))
 
     # Save the host table.
-    host_data.to_csv(outfile, sep="\t")
-    return host_data
+    phage_data.to_csv(outfile, sep="\t")
+    return phage_data

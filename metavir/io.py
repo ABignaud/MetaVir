@@ -15,6 +15,7 @@ This mdoule contains all core I/O functions:
 
 import networkx as nx
 import os
+import pandas as pd
 from os.path import join, exists
 from random import getrandbits
 
@@ -88,38 +89,26 @@ def import_contig_data_phages(contig_data_file, binning_result, phages_list):
 
     Returns:
     --------
-    dict:
-        Dictionnary with the contig id as keys and with the values of the contig
-        name the associated bin name, and either if the contig is binned and if
-        it's a phage contig. The name of the keys are "id", "bin", "binned",
-        "phage".
+    pandas.DataFrame:
+        Table with the contig information given with more column with the given
+        anvio binning and the phage annotation.
     list
-        List of the phages ID.
+        List of the phage contigs ID.
     """
-    contig_data = dict()
+    contig_data = pd.read_csv(contig_data_file, sep='\t')
+    contig_data["Binned"] = False
+    contig_data["Anvio_bin"] = "ND"
+    contig_data["Phage"] = False
     phages_list_id = []
-    with open(contig_data_file, "r") as file:
-        for line in file:
-            # Skip header.
-            if line.startswith("ID"):
-                continue
-            line = line.split()
-            try:
-                bin_name = binning_result[line[1]]
-                binned = True
-            except KeyError:
-                binned = False
-            if line[1] in phages_list:
-                phage = True
-                phages_list_id.append(line[0])
-            else:
-                phage = False
-            contig_data[line[0]] = {
-                "name": line[1],
-                "bin": bin_name,
-                "binned": binned,
-                "phage": phage,
-            }
+    for i in contig_data.index:
+        if contig_data.loc[i, "Name"] in phages_list:
+            contig_data.loc[i, "Phage"] = True
+            phages_list_id.append(contig_data.index[i])
+        try:
+            contig_data.loc[i, "Anvio_bin"] = binning_result[contig_data.loc[i, "Name"]]
+            contig_data.loc[i, "Binned"] = True
+        except KeyError:
+            continue  
     return contig_data, phages_list_id
 
 
@@ -176,7 +165,7 @@ def write_phage_data(phage_data, out_file):
 
     # Drop the phage id column which is the concatenation of the two previous
     # ones.
-    phage_data.drop("id", inplace=True, axis=1)
+    phage_data.drop("tmp", inplace=True, axis=1)
 
     # Write the data frame
     phage_data.to_csv(out_file, sep="\t")
