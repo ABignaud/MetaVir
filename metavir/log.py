@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-"""Basic logging setup for metaTOR
+"""Basic logging setup for MetaVir
 
 Basic logging setup with three main handlers (stdout, log file and optionally
 texting with the right API). By default the log file is disabled, but can be
@@ -21,7 +21,7 @@ CURRENT_LOG_LEVEL = logging.INFO
 
 logging.captureWarnings(True)
 
-logger = logging.getLogger("metator_logger")
+logger = logging.getLogger("metavir_logger")
 logger.setLevel(CURRENT_LOG_LEVEL)
 
 logfile_formatter = logging.Formatter(

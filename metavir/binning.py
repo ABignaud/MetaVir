@@ -299,7 +299,7 @@ def phage_binning(
     phage_depth_file = join(tmp_dir, "phage_depth.txt")
     contigs_file = join(tmp_dir, "phage_contigs.txt")
     temp_fasta = join(tmp_dir, "phages.fa")
-    metabat_output = join(out_dir, "metabat_phages_binning.tsv")
+    metabat_output = join(tmp_dir, "metabat_phages_binning.tsv")
     phage_data_file = join(out_dir, "phage_data_final.tsv")
     fasta_phages_bins = join(out_dir, "phages_binned.fa")
     checkv_dir_contigs = join(out_dir, "checkV_contigs")

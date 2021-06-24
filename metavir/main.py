@@ -14,13 +14,11 @@ options:
     -v, --version           shows the version
 
 The subcommands are:
-    host     Generate metaHiC contigs network from fastq reads or bam files
-                and normalize it.
-    binning   Partition metaHiC network using Louvain or Leiden algorithm.
-    pipeline    Use all the others command to give a binned output in one
-                command line.
-    validation  Validates bins using CheckM and make a recursive partition to
-                try to decontaminate them.
+    host        Detect bacterial host from a metaHiC network binned by metaTOR
+                given a annotated phages list.
+    binning     Build phages MAGs based on metagenomic binning using metabat2
+                and the host detection from the metaHiC data.
+    pipeline    Use both others command and run them sequentially.
 """
 
 from docopt import docopt

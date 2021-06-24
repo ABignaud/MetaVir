@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
+"""Module with the phages bacterial host detection functions. 
+
+It detects phages bacterial host MAGs from the output binning of MetaTOR and the
+metaHiC network. The module extract the subnetwork and then identify the bins 
+which interaction with the pahge to rank potential bacterial host.
+
+A core class Subentwork is build to handle the phage contigs interaction.
+
+Main function to call the class and build the ouput is host_detection.
+"""
+
+
 import pandas as pd
 from metavir.log import logger
 

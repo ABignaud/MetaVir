@@ -10,7 +10,7 @@ __credits__ = [
     "Martial Marbouty",
     "Romain Koszul",
 ]
-__license__ = "GPLv3"
+__license__ = "BSD-3"
 __maintainer__ = "Amaury Bignaud"
 __email__ = "amaury.bignaud@pasteur.fr"
 __status__ = "Alpha"

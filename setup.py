@@ -11,7 +11,7 @@ CLASSIFIERS = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "License :: OSI Approved :: BSD License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
@@ -25,14 +25,14 @@ CLASSIFIERS = [
     "Operating System :: Unix",
 ]
 
-name = "metator"
+name = "metavir"
 
 MAJOR = 0
 MINOR = 1
 MAINTENANCE = 0
 VERSION = "{}.{}.{}".format(MAJOR, MINOR, MAINTENANCE)
 
-LICENSE = "GPLv3"
+LICENSE = "BSD-3"
 URL = "https://github.com/ABignaud/MetaVir"
 
 DESCRIPTION = __doc__.strip("\n")

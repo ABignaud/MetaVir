@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-"""Module to plot phages binning result.
+"""Module to plot phages binning result from checkv output summary.
 
 Core function to plot:
     - build_vmags_summary

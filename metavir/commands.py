@@ -62,6 +62,10 @@ class AbstractCommand:
 class Host(AbstractCommand):
     """Detect host of phage annotated contigs.
 
+    It will return an output file with the phages information from MetaTOR
+    binning with the added information from the anvio binning and the detected
+    bacterial MAG host of the phages.
+
     usage:
         host --network=STR --binning=STR --phages=STR --contig-data=STR
         [--outfile=STR]
@@ -100,6 +104,17 @@ class Host(AbstractCommand):
 class Binning(AbstractCommand):
     """Bin phages contigs.
 
+    Bin the phage contigs in phages MAGs using the bacterial host detection from
+    MetaVir and the metagenomic binning base on sequences and coverage from
+    metabat2. 
+
+    The results are then checked using checkV and some plots are displayed to
+    viusalize them. It will return the updated phages data, the phages fasta,
+    the detailed ouputs of checKV and the plots.
+
+    The phage fasta will contain one entry by phage MAG, with 180 "N" spacers
+    between contigs.
+
     usage:
         binning --depth=STR --fasta=STR --phages-data=STR [--no-clean-up]
         [--outdir=STR] [--threads=1] [--tmpdir=STR]
@@ -109,7 +124,7 @@ class Binning(AbstractCommand):
                                 jgi_summarize_bam_contig_depths.
         -f, --fasta=STR         Path to the fasta file with tha phage contigs
                                 sequences.
-        -p, --phages-data=STR   Path to the bacterial host associated to the 
+        -p, --phages-data=STR   Path to the bacterial host associated to the
                                 phages contigs generated with metavir host.
         -N, --no-clean-up       If enabled, remove the temporary files.
         -o, --outdir=STR        Path to the output directory where the output
@@ -154,7 +169,7 @@ class Binning(AbstractCommand):
             
 
 class Pipeline(AbstractCommand):
-    """Run all commands in one command.
+    """Run both host and binning command sequentially.
 
     usage: 
         pipeline --binning=STR --contig-data=STR --depth=STR --fasta=STR 

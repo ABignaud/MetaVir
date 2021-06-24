@@ -23,8 +23,11 @@ pip3 install metavir
 Or to use the latest version
 
 ```sh
-pip3 install -e git+https://github.com/ABignaud/MetaVir.git@master#egg=metator
+git clone https://github.com/ABignaud/MetaVir.git
+pip3 install -e ./MetaVir
 ```
+
+Installation of metabat2 and checkV database are necessary to use the binning module. To install metabat2, follow the instructions [here](https://bitbucket.org/berkeleylab/metabat/src/master/) and to install and/or update checkv database, instructions are available [here](https://bitbucket.org/berkeleylab/checkv/src/master/). To use MetaVir, it is mandatory to set the environnement variable CHECKVDB manually or using their workflows.
 
 ### Using docker container
 
@@ -45,7 +48,7 @@ metavir {host|binning} [parameters]
 
 There are two main steps in the metaVir pipeline, which must be run in the following order:
 
-* `host` : Detect bacterial host in the network of a given annotated phages contigs list.
+* `host` : Detect bacterial host from a metaHiC network binned by metaTOR given a annotated phages list.
 * `binning` : Build phages MAGs based on metagenomic binning using [metabat2](https://bitbucket.org/berkeleylab/metabat/src/master/) and the host detection form the metaHiC data.
 
 There are a number of other, optional, miscellaneous actions:
@@ -62,7 +65,6 @@ There are a number of other, optional, miscellaneous actions:
 
 #### binning
 
-* **metabat_phages_binning.tsv:** Clustering output from [metabat2](https://bitbucket.org/berkeleylab/metabat/src/master/)
 * **phages_data.tsv:** Clustering output summary from the binning.
 * **phages_binned.fa:** Fasta file with the sequences of the binnes phage MAGs. Each entry represent one phage MAG, and contigs are delimited by 180bp "N" spacers.
 * **checkV_contigs:** Directory with [checkV](https://bitbucket.org/berkeleylab/checkv/src/master/) output of phage contigs.
