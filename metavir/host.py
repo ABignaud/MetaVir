@@ -76,11 +76,18 @@ class Subnetwork:
             #         self.bins[contig_data[node]["name"]]["score"] += score
             #     except KeyError:
             #         self.bins[contig_data[node]["name"]] = {"score" : score}
-            if contig_data.loc[node, "Binned"] and not contig_data.loc[node, "Phage"]:
+            if (
+                contig_data.loc[node, "Binned"]
+                and not contig_data.loc[node, "Phage"]
+            ):
                 try:
-                    self.bins[contig_data.loc[node, "Anvio_bin"]]["score"] += score
+                    self.bins[contig_data.loc[node, "Anvio_bin"]][
+                        "score"
+                    ] += score
                 except KeyError:
-                    self.bins[contig_data.loc[node, "Anvio_bin"]] = {"score": score}
+                    self.bins[contig_data.loc[node, "Anvio_bin"]] = {
+                        "score": score
+                    }
         self.scored = True
 
     def getMaxBinScore(self, contig_data=None):
@@ -149,8 +156,8 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
     """
     # Compute the score with the subnetwork and return bins in each categories
     # and build the associated table.
-    phage_data = pd.DataFrame(contig_data.loc[phages_list_id, :]) 
-    phage_data["Host"] = "ND" 
+    phage_data = pd.DataFrame(contig_data.loc[phages_list_id, :])
+    phage_data["Host"] = "ND"
     A, B, C = 0, 0, 0
     for contig_id in phages_list_id:
         network_id = contig_id + 1
@@ -163,7 +170,9 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
         count = sub.getBinScore()
         if count == 0:
             C += 1
-            phage_data.loc[contig_id, "Host"] = "No associated bin. ID: " + str(C)
+            phage_data.loc[contig_id, "Host"] = "No associated bin. ID: " + str(
+                C
+            )
         elif count == 1:
             A += 1
             phage_data.loc[contig_id, "Host"] = bin_name

@@ -67,15 +67,15 @@ class Host(AbstractCommand):
     bacterial MAG host of the phages.
 
     usage:
-        host --network=STR --binning=STR --phages=STR --contig-data=STR
-        [--outfile=STR]
+        host --network=FILE --binning=FILE --phages=FILE --contig-data=FILE
+        [--outfile=FILE]
 
     options:
-        -b, --binning=STR       Path to the anvio binning file.
-        -c, --contig-data=STR   Path to the MetaTOR contig data file.
-        -n, --network=STR       Path to the network file.
-        -o, --outfile=STR       Path where to write the output file.
-        -p, --phages=STR        Path to the file with phages contigs list.
+        -b, --binning=FILE      Path to the anvio binning file.
+        -c, --contig-data=FILE  Path to the MetaTOR contig data file.
+        -n, --network=FILE      Path to the network file.
+        -o, --outfile=FILE      Path where to write the output file.
+        -p, --phages=FILE       Path to the file with phages contigs list.
     """
 
     def execute(self):
@@ -106,7 +106,7 @@ class Binning(AbstractCommand):
 
     Bin the phage contigs in phages MAGs using the bacterial host detection from
     MetaVir and the metagenomic binning base on sequences and coverage from
-    metabat2. 
+    metabat2.
 
     The results are then checked using checkV and some plots are displayed to
     viusalize them. It will return the updated phages data, the phages fasta,
@@ -116,22 +116,25 @@ class Binning(AbstractCommand):
     between contigs.
 
     usage:
-        binning --depth=STR --fasta=STR --phages-data=STR [--no-clean-up]
-        [--outdir=STR] [--threads=1] [--tmpdir=STR]
+        binning --depth=FILE --fasta=FILE --phages-data=FILE [--checkv-db=DIR]
+        [--no-clean-up] [--outdir=DIR] [--threads=1] [--tmpdir=DIR]
 
     options:
-        -d, --depth=STR         Path to the depth file from metabat2 script:
+        --checkv-db=DIR         Directory where the checkV database is stored.
+                                By default the CHECKVDB environment variable is
+                                used.
+        -d, --depth=FILE        Path to the depth file from metabat2 script:
                                 jgi_summarize_bam_contig_depths.
-        -f, --fasta=STR         Path to the fasta file with tha phage contigs
+        -f, --fasta=FILE        Path to the fasta file with tha phage contigs
                                 sequences.
-        -p, --phages-data=STR   Path to the bacterial host associated to the
-                                phages contigs generated with metavir host.
         -N, --no-clean-up       If enabled, remove the temporary files.
-        -o, --outdir=STR        Path to the output directory where the output
+        -o, --outdir=DIR        Path to the output directory where the output
                                 will be written. Default current directory.
+        -p, --phages-data=FILE  Path to the bacterial host associated to the
+                                phages contigs generated with metavir host.
         -t, --threads=INT       Number of threads to use for checkV.
                                 [Default: 1]
-        -T, --tmpdir=STR        Path to temporary directory. [Default: ./tmp]
+        -T, --tmpdir=DIR        Path to temporary directory. [Default: ./tmp]
     """
 
     def execute(self):
@@ -150,8 +153,13 @@ class Binning(AbstractCommand):
         else:
             remove_tmp = False
 
+        # Set checkV database path
+        if not self.args["--checkv-db"]:
+            self.args["--checkv-db"] = os.getenv("CHECKVD")
+
         # Run the phages binning
         mtb.phage_binning(
+            self.args["--checkv-db"],
             self.args["--depth"],
             self.args["--fasta"],
             self.args["--phages-data"],
@@ -166,33 +174,34 @@ class Binning(AbstractCommand):
             shutil.rmtree(tmp_dir)
             # Delete pyfastx index:
             os.remove(self.args["--fasta"] + ".fxi")
-            
+
 
 class Pipeline(AbstractCommand):
     """Run both host and binning command sequentially.
 
-    usage: 
-        pipeline --binning=STR --contig-data=STR --depth=STR --fasta=STR 
-        [--outdir=STR] --network=STR --phages=STR  [--no-clean-up] [--threads=1]
-        [--tmpdir=STR]
-    
+    usage:
+        pipeline --binning=FILE --contig-data=FILE --depth=FILE --fasta=FILE
+        [--checkv-db=DIR] --network=FILE --phages=FILE  [--outdir=DIR]
+        [--no-clean-up] [--threads=1] [--tmpdir=DIR]
+
     options:
-        -b, --binning=STR       Path to the anvio binning file.
-        -c, --contig-data=STR   Path to the MetaTOR contig data file.
-        -d, --depth=STR         Path to the depth file from metabat2 script:
+        -b, --binning=FILE      Path to the anvio binning file.
+        -c, --contig-data=FILE  Path to the MetaTOR contig data file.
+        --checkv-db=DIR         Directory where the checkV database is stored.
+                                By default the CHECKVDB environment variable is
+                                used.
+        -d, --depth=FILE        Path to the depth file from metabat2 script:
                                 jgi_summarize_bam_contig_depths.
-        -f, --fasta=STR         Path to the fasta file with tha phage contigs
+        -f, --fasta=FILE        Path to the fasta file with tha phage contigs
                                 sequences.
-        -H, --host=STR          Path to the bacterial host associated to the
-                                phages contigs generated with metavir host.
-        -n, --network=STR       Path to the network file.
+        -n, --network=FILE      Path to the network file.
         -N, --no-clean-up       If enabled, remove the temporary files.
-        -o, --outdir=STR        Path to the output directory where the output 
+        -o, --outdir=DIR        Path to the output directory where the output
                                 will be written. Default current directory.
-        -p, --phages=STR        Path to the file with phages contigs list.
+        -p, --phages=FILE       Path to the file with phages contigs list.
         -t, --threads=INT       Number of threads to use for checkV.
                                 [Default: 1]
-        -T, --tmpdir=STR        Path to temporary directory. [Default: ./tmp]
+        -T, --tmpdir=DIR        Path to temporary directory. [Default: ./tmp]
     """
 
     def execute(self):
@@ -205,13 +214,17 @@ class Pipeline(AbstractCommand):
         if not self.args["--outdir"]:
             self.args["--outdir"] = "."
         os.makedirs(self.args["--outdir"], exist_ok=True)
-        
+
         # Set remove tmp for checkV.
         if not self.args["--no-clean-up"]:
             remove_tmp = True
         else:
             remove_tmp = False
-            
+
+        # Set checkV database path
+        if not self.args["--checkv-db"]:
+            self.args["--checkv-db"] = os.getenv("CHECKVD")
+
         # Import the files
         binning_result = mio.import_anvio_binning(self.args["--binning"])
         phages_list = mio.import_phages_contigs(self.args["--phages"])
@@ -232,6 +245,7 @@ class Pipeline(AbstractCommand):
 
         # Run the phages binning
         mtb.phage_binning(
+            self.args["--checv-db"],
             self.args["--depth"],
             self.args["--fasta"],
             out_file,

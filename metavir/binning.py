@@ -19,11 +19,11 @@ Core function to partition phages contigs:
 import checkv
 import metavir.figures as mtf
 import metavir.io as mio
-import os
 import pandas as pd
 import subprocess as sp
 from metavir.log import logger
 from os.path import join
+import shutil
 
 
 def build_phage_depth(contigs_file, depth_file, phages_data, phage_depth_file):
@@ -184,34 +184,41 @@ def generate_phages_fasta(fasta, phage_bins, out_file, tmp_dir):
     logger.info("{0} bins have been extracted".format(nb_bins))
 
 
-def run_checkv(fasta, out_dir, remove_tmp, threads):
+def run_checkv(checkv_db, fasta, out_dir, remove_tmp, threads):
     """Function to launch end to end workflow from checkV.
 
     Parameters:
     -----------
+    checkv_db : str
+        Path to the directory of the reference database.
     fasta : str
         Path to the fasta of phages sequences to check.
     out_dir : str
         Path to the checkV output directory where the results of checkV will be
         written.
     remove_tmp : bool
-        If True
+        If True, remove temporary files from checkV.
     threads : int
         Number of threads to use to launch checkV.
     """
 
     # Defined checkV arguments.
     checkv_args = {
-        "db": os.getenv("CHECKVDB"),
+        "db": checkv_db,
         "input": fasta,
         "output": out_dir,
         "quiet": True,
-        "remove_tmp": remove_tmp,
+        "remove_tmp": False,
         "restart": True,
         "threads": threads,
     }
-    # Run checkV
+    # Run checkV.
     checkv.modules.end_to_end.main(checkv_args)
+
+    # Remove temporary directory if required. This is done separately as it
+    # raises an error in checkV.
+    if remove_tmp:
+        shutil.rmtree(join(out_dir, "tmp"))
 
 
 def run_metabat(
@@ -258,11 +265,14 @@ def run_metabat(
     process.communicate()
 
     # Import metabat result as a pandas dataframe and return it.
-    metabat = pd.read_csv(outfile, sep="\t", index_col=False, names=["Name", "Metabat_bin"])
+    metabat = pd.read_csv(
+        outfile, sep="\t", index_col=False, names=["Name", "Metabat_bin"]
+    )
     return metabat
 
 
 def phage_binning(
+    checkv_db,
     depth_file,
     fasta_phages_contigs,
     phages_data_file,
@@ -278,6 +288,8 @@ def phage_binning(
 
     Parameters:
     -----------
+    checkv_db : str
+        Path to the directory of the reference database.
     depth_file : str
         Path to depth file of the whole metagenome from metabat script.
     fasta_phages_contigs : str
@@ -288,7 +300,7 @@ def phage_binning(
     out_dir : str
         Path to the directory where to write the output data.
     remove_tmp : bool
-        If True, it will remove the the temporary files of checkV.
+        If eneabled, remove temporary files of checkV.
     threads : int
         Number of threads to use for checkV.
     tmp_dir : str
@@ -300,7 +312,7 @@ def phage_binning(
     contigs_file = join(tmp_dir, "phage_contigs.txt")
     temp_fasta = join(tmp_dir, "phages.fa")
     metabat_output = join(tmp_dir, "metabat_phages_binning.tsv")
-    phage_data_file = join(out_dir, "phage_data_final.tsv")
+    phage_data_file = join(out_dir, "phages_data_final.tsv")
     fasta_phages_bins = join(out_dir, "phages_binned.fa")
     checkv_dir_contigs = join(out_dir, "checkV_contigs")
     checkv_dir_bins = join(out_dir, "checkV_bins")
@@ -336,8 +348,10 @@ def phage_binning(
     )
 
     # Run checkV on phage contigs and bins.
-    run_checkv(temp_fasta, checkv_dir_contigs, remove_tmp, threads)
-    run_checkv(fasta_phages_bins, checkv_dir_bins, remove_tmp, threads)
+    run_checkv(checkv_db, temp_fasta, checkv_dir_contigs, remove_tmp, threads)
+    run_checkv(
+        checkv_db, fasta_phages_bins, checkv_dir_bins, remove_tmp, threads
+    )
 
     # Plot figures
     checkv_summary_contigs = pd.read_csv(
@@ -346,7 +360,7 @@ def phage_binning(
     checkv_summary_bins = pd.read_csv(
         join(checkv_dir_bins, "quality_summary.tsv"), sep="\t"
     )
-    mtf.pie_bins_size_distribution(checkv_summary_bins, figure_file)
+    mtf.pie_bins_size_distribution(checkv_summary_bins, figure_file_pie)
     mtf.barplot_bins_size(
         ["Contigs", "Bins"],
         [checkv_summary_contigs, checkv_summary_bins],

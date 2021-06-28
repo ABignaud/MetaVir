@@ -130,7 +130,7 @@ def pie_bins_size_distribution(checkv_summary, out_file):
 
 
 def barplot_bins_size(labels, list_checkv_summary, out_file):
-    """Plot the size distribution of the bins quality of different experiments 
+    """Plot the size distribution of the bins quality of different experiments
     or methods.
 
     Parameters:
@@ -176,7 +176,7 @@ def barplot_bins_size(labels, list_checkv_summary, out_file):
 
 
 def barplot_bins_number(labels, list_checkv_summary, out_file):
-    """Plot the number distribution of the bins quality of different experiments 
+    """Plot the number distribution of the bins quality of different experiments
     or methods.
 
     Parameters:
