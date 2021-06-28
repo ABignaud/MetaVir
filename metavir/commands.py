@@ -117,7 +117,7 @@ class Binning(AbstractCommand):
 
     usage:
         binning --depth=FILE --fasta=FILE --phages-data=FILE [--checkv-db=DIR]
-        [--no-clean-up] [--outdir=DIR] [--threads=1] [--tmpdir=DIR]
+        [--no-clean-up] [--outdir=DIR] [--plot] [--threads=1] [--tmpdir=DIR]
 
     options:
         --checkv-db=DIR         Directory where the checkV database is stored.
@@ -132,6 +132,7 @@ class Binning(AbstractCommand):
                                 will be written. Default current directory.
         -p, --phages-data=FILE  Path to the bacterial host associated to the
                                 phages contigs generated with metavir host.
+        -P, --plot              If enable, make summary plots.
         -t, --threads=INT       Number of threads to use for checkV.
                                 [Default: 1]
         -T, --tmpdir=DIR        Path to temporary directory. [Default: ./tmp]
@@ -164,6 +165,7 @@ class Binning(AbstractCommand):
             self.args["--fasta"],
             self.args["--phages-data"],
             self.args["--outdir"],
+            self.args["--plot"],
             remove_tmp,
             int(self.args["--threads"]),
             tmp_dir,
@@ -181,8 +183,8 @@ class Pipeline(AbstractCommand):
 
     usage:
         pipeline --binning=FILE --contig-data=FILE --depth=FILE --fasta=FILE
-        [--checkv-db=DIR] --network=FILE --phages=FILE  [--outdir=DIR]
-        [--no-clean-up] [--threads=1] [--tmpdir=DIR]
+        [--checkv-db=DIR] --network=FILE --phages=FILE  [--no-clean-up]
+        [--outdir=DIR] [--plot] [--threads=1] [--tmpdir=DIR]
 
     options:
         -b, --binning=FILE      Path to the anvio binning file.
@@ -199,6 +201,7 @@ class Pipeline(AbstractCommand):
         -o, --outdir=DIR        Path to the output directory where the output
                                 will be written. Default current directory.
         -p, --phages=FILE       Path to the file with phages contigs list.
+        -P, --plot              If enable, make summary plots. 
         -t, --threads=INT       Number of threads to use for checkV.
                                 [Default: 1]
         -T, --tmpdir=DIR        Path to temporary directory. [Default: ./tmp]
@@ -250,6 +253,7 @@ class Pipeline(AbstractCommand):
             self.args["--fasta"],
             out_file,
             self.args["--outdir"],
+            self.args["--plot"],
             remove_tmp,
             int(self.args["--threads"]),
             tmp_dir,

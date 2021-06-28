@@ -277,6 +277,7 @@ def phage_binning(
     fasta_phages_contigs,
     phages_data_file,
     out_dir,
+    plot,
     remove_tmp,
     threads,
     tmp_dir,
@@ -297,6 +298,8 @@ def phage_binning(
         other sequences.
     phages_data_file : str
         Path to the output file from metavir host detection workflow.
+    plot : bool
+        If True make some summary plots.
     out_dir : str
         Path to the directory where to write the output data.
     remove_tmp : bool
@@ -354,20 +357,21 @@ def phage_binning(
     )
 
     # Plot figures
-    checkv_summary_contigs = pd.read_csv(
-        join(checkv_dir_contigs, "quality_summary.tsv"), sep="\t"
-    )
-    checkv_summary_bins = pd.read_csv(
-        join(checkv_dir_bins, "quality_summary.tsv"), sep="\t"
-    )
-    mtf.pie_bins_size_distribution(checkv_summary_bins, figure_file_pie)
-    mtf.barplot_bins_size(
-        ["Contigs", "Bins"],
-        [checkv_summary_contigs, checkv_summary_bins],
-        figure_file_bar_size,
-    )
-    # mtf.barplot_bins_number(
-    #     ["Contigs", "Bins"],
-    #     [checkv_summary_contigs, checkv_summary_bins],
-    #     figure_file_bar_nb,
-    # )
+    if plot:
+        checkv_summary_contigs = pd.read_csv(
+            join(checkv_dir_contigs, "quality_summary.tsv"), sep="\t"
+        )
+        checkv_summary_bins = pd.read_csv(
+            join(checkv_dir_bins, "quality_summary.tsv"), sep="\t"
+        )
+        mtf.pie_bins_size_distribution(checkv_summary_bins, figure_file_pie)
+        mtf.barplot_bins_size(
+            ["Contigs", "Bins"],
+            [checkv_summary_contigs, checkv_summary_bins],
+            figure_file_bar_size,
+        )
+        # mtf.barplot_bins_number(
+        #     ["Contigs", "Bins"],
+        #     [checkv_summary_contigs, checkv_summary_bins],
+        #     figure_file_bar_nb,
+        # )
