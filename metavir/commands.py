@@ -248,7 +248,7 @@ class Pipeline(AbstractCommand):
 
         # Run the phages binning
         mtb.phage_binning(
-            self.args["--checv-db"],
+            self.args["--checkv-db"],
             self.args["--depth"],
             self.args["--fasta"],
             out_file,

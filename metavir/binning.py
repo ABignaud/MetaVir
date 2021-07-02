@@ -13,12 +13,15 @@ Core function to partition phages contigs:
     - generate_phages_fasta
     - run_checkv
     - run_metabat
+    - shuffle_phage_bins
+    - phage_binning
 """
 
 
 import checkv
 import metavir.figures as mtf
 import metavir.io as mio
+import numpy as np
 import pandas as pd
 import subprocess as sp
 from metavir.log import logger
@@ -68,9 +71,9 @@ def build_phage_depth(contigs_file, depth_file, phages_data, phage_depth_file):
 
 
 def generate_phage_bins(phages_data):
-    """Generates the binning of the pahges contigs based on both HiC
-    information (host detection) and the coverage and sequences (metabat2
-    binning)
+    """Generates the binning of the phages contigs based on both HiC
+    information (host detection) and the coverage and sequences information
+    (metabat2 binning).
 
     Parameters:
     -----------
@@ -270,6 +273,43 @@ def run_metabat(
     )
     return metabat
 
+def shuffle_phage_bins(phages_data):
+    """Function to shuffle id to imitate a random binning with the same bins
+    distribution as the one created by MetaVir.
+
+    Parameters:
+    -----------
+    phages_data : pandas.DataFrame
+        Table with the contigs name as index and with information from both
+        host detected from metavir host and cluster form metabat2 and with phage
+        bins id.
+
+    Returns:
+    --------
+    pandas.DataFrame:
+        Input table with the phage bin id column randomly shuffled.
+    dict:
+        Dictionnary with the phage bin id as key and the list of the contigs
+        name as value from the shuffle contigs bins.
+    """
+    
+    # Shuffle the ids of the dataframe
+    phages_bin_ids = phages_data.MetaVir_bin
+    shuffle_ids = np.random.permutation(phages_bin_ids)
+    phages_data["shuffle"] = shuffle_ids
+
+    phages_bins = {}
+    # Shuffle phages bins according to the shuffle dataframe.
+    for index in phages_data.index:
+        contig = phages_data.loc[index, "Name"]
+        phage_bin_id = phages_data.loc[index, "shuffle"]
+        try:
+            phages_bins[phage_bin_id].append(contig)
+        except KeyError:
+            phages_bins[phage_bin_id] = [contig]
+
+    return phages_data, phages_bins
+
 
 def phage_binning(
     checkv_db,
@@ -343,6 +383,11 @@ def phage_binning(
     # Make binning based on both metabat binning and host detection.
     phages_data = phages_data.merge(metabat)
     phages_data, phage_bins = generate_phage_bins(phages_data)
+
+    # Shuffle to simulate random bins. Uncomment to do it
+    # phages_data, phage_bins = shuffle_phage_bins(phages_data)
+
+    # Write phages data
     mio.write_phage_data(phages_data, phage_data_file)
 
     # Generate fasta for checkV quality check.

@@ -215,7 +215,7 @@ def barplot_bins_number(labels, list_checkv_summary, out_file):
     )
     plt.title("Phages bins quality distribution")
     plt.xlabel("Experiment")
-    plt.ylabel("Percentage bins size (%)")
+    plt.ylabel("Percentage bins number (%)")
     plt.legend(loc="upper right", bbox_to_anchor=(0.2, 0.0, 1.0, 1.0))
     # Save the file
     plt.savefig(out_file, dpi=200, bbox_inches="tight")
