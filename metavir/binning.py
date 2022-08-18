@@ -146,14 +146,12 @@ def generate_phages_fasta(fasta, phage_bins, out_file, tmp_dir):
             list_contigs_name = phage_bins[bin_id]
             nb_bins += 1
             # Create a temporary fasta file.
-            contigs_file = join(tmp_dir, "MetaVIR_{0}.txt".format(bin_id))
-            temp_file = join(tmp_dir, "MetaVIR_{0}.fa".format(bin_id))
+            contigs_file = join(tmp_dir, f"MetaVIR_{bin_id}.txt")
+            temp_file = join(tmp_dir, f"MetaVIR_{bin_id}.fa")
             with open(contigs_file, "w") as f:
                 for contig_name in list_contigs_name:
                     f.write("%s\n" % contig_name)
-            cmd = "pyfastx extract {0} -l {1} > {2}".format(
-                fasta, contigs_file, temp_file
-            )
+            cmd = f"pyfastx extract {fasta} -l {contigs_file} > {temp_file}")
             process = sp.Popen(cmd, shell=True)
             process.communicate()
 
@@ -167,11 +165,11 @@ def generate_phages_fasta(fasta, phage_bins, out_file, tmp_dir):
                             start = False
                             if bin_id == 1:
                                 out.write(
-                                    ("%s\n" % ">MetaVIR_{0}".format(bin_id))
+                                    ("%s\n" % f">MetaVIR_{bin_id}")
                                 )
                             else:
                                 out.write(
-                                    ("\n%s\n" % ">MetaVIR_{0}".format(bin_id))
+                                    ("\n%s\n" % f">MetaVIR_{bin_id}")
                                 )
                         else:
                             out.write(
@@ -184,7 +182,7 @@ def generate_phages_fasta(fasta, phage_bins, out_file, tmp_dir):
                             )
                     else:
                         out.write(line)
-    logger.info("{0} bins have been extracted".format(nb_bins))
+    logger.info(f"{nb_bins} bins have been extracted")
 
 
 def run_checkv(checkv_db, fasta, out_dir, remove_tmp, threads):
@@ -420,3 +418,159 @@ def phage_binning(
         #     [checkv_summary_contigs, checkv_summary_bins],
         #     figure_file_bar_nb,
         # )
+
+
+def build_matrix(contigs, contigs_size, pairs_files):
+    """Function to extract the pairs from a set of contigs from pairs files. Run 
+    faster if the files are indexed. 
+
+    Parameters:
+    -----------
+    
+    """
+    # Initiation
+    npairs = 0
+    n = len(contigs)
+    mat = np.zeros((n, n))
+    # Write one pair file for all the ones given.
+    for pairs_file in pairs_files:
+        # Check if the pairix index exist
+        try:
+            pairs_data = pypairix.open(pairs_file)
+            pypairix_index = True
+        except pypairix.PairixError:
+            logger.warning("No pairix index found. Iterates on the pairs.")
+            pypairix_index = False
+        # Need a sorted (chr1 chr2 pos1 pos2) pair file indexed with pairix.
+        if pypairix_index:
+            for i, contig in enumerate(contigs):
+                # Only need to retrieve the upper triangle.
+                for j in range(
+                    i, len(contigs)
+                ):
+                    pairs_lines = pairs_data.query2D(
+                        contig,
+                        0,
+                        contigs_size[i],
+                        contigs[j],
+                        0,
+                        contigs_size[j],
+                        1,
+                    )
+                    for p in pairs_lines:
+                        npairs +=1
+                        # The threshold of 1000 is to remove the close range
+                        # contacts.
+                        if i == j:
+                            if np.abs(int(p[2]) - int(p[4])) > 1000:
+                                mat[i, i] += 1
+                        else:
+                            mat[i, j] += 1
+        # else Iterates on the input pairs file (take much longer than with
+        # the index).
+        else:
+            with open(pairs_file, "r") as input_pairs:
+                for pairs_line in input_pairs:
+                    # Ignore header lines.
+                    if pairs_line.startswith("#"):
+                        continue
+                    # Split the line on the tabulation and check if both contigs
+                    # are in the bin.
+                    pairs = pairs_line.split("\t")
+                    if (
+                        pairs[1] in contigs
+                        and pairs[3] in contigs
+                    ):
+                        npairs += 1
+                        i = contigs.index(pairs[1])
+                        j = contigs.index(pairs[3])
+                        # The threshold of 1000 is to remove the close range
+                        # contacts.
+                        if i == j:
+                            if np.abs(int(pairs[2]) - int(pairs[4])) > 1000:
+                                mat[i, i] += 1
+                        else:
+                            mat[i, j] += 1   
+    logger.info(f"{npairs}")
+    return mat
+
+
+def resolve_matrix(
+    mat0
+):
+    """Main function to bin phages contigs.
+
+    Generates a fasta file where each entry is a phage bin, with 180bp "N" as
+    spacers between contigs.
+
+    Parameters:
+    -----------
+    checkv_db : str
+        Path to the directory of the reference database.
+    depth_file : str
+        Path to depth file of the whole metagenome from metabat script.
+    fasta_phages_contigs : str
+        Path to the fasta containing the phages sequences. It could contain
+        other sequences.
+    phages_data_file : str
+        Path to the output file from metavir host detection workflow.
+    plot : bool
+        If True make some summary plots.
+    out_dir : str
+        Path to the directory where to write the output data.
+    remove_tmp : bool
+        If eneabled, remove temporary files of checkV.
+    threads : int
+        Number of threads to use for checkV.
+    tmp_dir : str
+        Path to temporary directory for intermediate files.
+    """
+
+    mat = np.copy(mat0)
+    n = len(mat)
+    
+    # Create output and temporary files.
+    for i in range(n):
+        for j in range(i+1, n):
+            if (mat[i,i] > 0) and (mat[j,j] > 0):
+                mat[i,j] = mat[i,j] / np.sqrt(mat[i,i] * mat[j,j])
+            else:
+                mat[i,j] = 0
+            
+    for i in range(n):
+        mat[i,i] = 0
+                
+    maxi = np.max(mat)
+    while maxi > 1:
+        # Handle case where we have multiple max
+        try:
+            i, j = np.where(mat == maxi)
+            i = int(i)
+            j = int(j)
+        except TypeError:
+            i, j = np.where(mat == maxi)[0]
+            i = int(i)
+            j = int(j)
+            
+        a  = mat0[i,:] + mat0[:,i] + mat0[j,:] + mat0[:,j]
+        intra = mat0[i,i] + mat0[j,j] + mat0[i,j]
+        mat0[i, i] = intra
+        for k in range(n):
+            if k < i:
+                mat0[k, i] = a[k]
+                if mat0[k,k] > 0:
+                    mat[k, i] = a[k] / np.sqrt(intra * mat0[k,k])
+                else:
+                    mat[k, i] = 0
+            elif k > i:
+                mat0[i, k] = a[k]
+                if mat0[k,k] > 0:
+                    mat[i, k] = a[k] / np.sqrt(intra * mat0[k,k])
+                else:
+                    mat[k, i] = 0
+        mat[j, :] = np.zeros(n)
+        mat[:, j] = np.zeros(n)
+        mat0[j, :] = np.zeros(n)
+        mat0[:, j] = np.zeros(n)
+        print(f"Bin {i} and {j} contigs !")
+        maxi = np.max(mat)

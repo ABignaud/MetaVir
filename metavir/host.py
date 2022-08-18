@@ -13,6 +13,7 @@ Main function to call the class and build the ouput is host_detection.
 """
 
 
+import networkx
 import pandas as pd
 from metavir.log import logger
 
@@ -81,11 +82,11 @@ class Subnetwork:
                 and not contig_data.loc[node, "Phage"]
             ):
                 try:
-                    self.bins[contig_data.loc[node, "Anvio_bin"]][
+                    self.bins[contig_data.loc[node, "Final_bin"]][
                         "score"
                     ] += score
                 except KeyError:
-                    self.bins[contig_data.loc[node, "Anvio_bin"]] = {
+                    self.bins[contig_data.loc[node, "Final_bin"]] = {
                         "score": score
                     }
         self.scored = True
@@ -162,25 +163,39 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
     for contig_id in phages_list_id:
         network_id = contig_id + 1
         contig = contig_data.loc[contig_id, "Name"]
-        subnetwork = network.edges(network_id, data="weight")
-        sub = Subnetwork(subnetwork)
-        sub.setScore()
-        sub.setBinScore(contig_data)
-        bin_name, score = sub.getMaxBinScore()
-        count = sub.getBinScore()
-        if count == 0:
+        # Do not compute subnetwork with no HiC contacts.
+        if contig_data.loc[contig_id, "Hit"] > 0:
+            # Manage the case of the self interacting contigs.
+            try:
+                subnetwork = network.edges(network_id, data="weight")
+                sub = Subnetwork(subnetwork)
+                sub.setScore()
+                sub.setBinScore(contig_data)
+                bin_name, score = sub.getMaxBinScore()
+                count = sub.getBinScore()
+                if count == 0:
+                    C += 1
+                    phage_data.loc[contig_id, "Host"] = "No associated bin. ID: " + str(
+                        C
+                    )
+                elif count == 1:
+                    A += 1
+                    phage_data.loc[contig_id, "Host"] = bin_name
+                else:
+                    B += 1
+                    phage_data.loc[
+                        contig_id, "host"
+                    ] = "More than one associated bin. ID: " + str(B)
+            except networkx.exception.NetworkXError:
+                C += 1
+                phage_data.loc[contig_id, "Host"] = "No associated bin. ID: " + str(
+                    C
+                )
+        else:
             C += 1
             phage_data.loc[contig_id, "Host"] = "No associated bin. ID: " + str(
                 C
             )
-        elif count == 1:
-            A += 1
-            phage_data.loc[contig_id, "Host"] = bin_name
-        else:
-            B += 1
-            phage_data.loc[
-                contig_id, "host"
-            ] = "More than one associated bin. ID: " + str(B)
 
     logger.info("{0} phages associated with one bin.".format(A))
     logger.info("{0} phages associated with more than one bin.".format(B))
