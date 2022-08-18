@@ -175,9 +175,9 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
                 count = sub.getBinScore()
                 if count == 0:
                     C += 1
-                    phage_data.loc[contig_id, "Host"] = "No associated bin. ID: " + str(
-                        C
-                    )
+                    phage_data.loc[
+                        contig_id, "Host"
+                    ] = "No associated bin. ID: " + str(C)
                 elif count == 1:
                     A += 1
                     phage_data.loc[contig_id, "Host"] = bin_name
@@ -188,9 +188,9 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
                     ] = "More than one associated bin. ID: " + str(B)
             except networkx.exception.NetworkXError:
                 C += 1
-                phage_data.loc[contig_id, "Host"] = "No associated bin. ID: " + str(
-                    C
-                )
+                phage_data.loc[
+                    contig_id, "Host"
+                ] = "No associated bin. ID: " + str(C)
         else:
             C += 1
             phage_data.loc[contig_id, "Host"] = "No associated bin. ID: " + str(

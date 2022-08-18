@@ -167,7 +167,10 @@ def write_phage_data(phage_data, out_file):
 
     # Drop the phage id column which is the concatenation of the two previous
     # ones.
-    phage_data.drop("tmp", inplace=True, axis=1)
+    try:
+        phage_data.drop("tmp", inplace=True, axis=1)
+    except KeyError:
+        pass
 
     # Write the data frame
     phage_data.to_csv(out_file, sep="\t")

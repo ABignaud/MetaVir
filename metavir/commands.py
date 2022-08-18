@@ -28,6 +28,7 @@ import metavir.host as mth
 import metavir.io as mio
 import os
 import shutil
+from metavir.log import logger
 
 
 class AbstractCommand:
@@ -116,8 +117,9 @@ class Binning(AbstractCommand):
     between contigs.
 
     usage:
-        binning --depth=FILE --fasta=FILE --phages-data=FILE [--checkv-db=DIR]
-        [--no-clean-up] [--outdir=DIR] [--plot] [--threads=1] [--tmpdir=DIR]
+        binning --fasta=FILE --phages-data=FILE [--checkv-db=DIR] [--depth=FILE]
+        [--method=pairs] [--no-clean-up] [--outdir=DIR] [--pairs=STR] [--plot]
+        [--random] [--threads=1] [--tmpdir=DIR]
 
     options:
         --checkv-db=DIR         Directory where the checkV database is stored.
@@ -127,12 +129,16 @@ class Binning(AbstractCommand):
                                 jgi_summarize_bam_contig_depths.
         -f, --fasta=FILE        Path to the fasta file with tha phage contigs
                                 sequences.
+        -m, --method=STR        Method for the binning. Either 'metabat' or
+                                'pairs' [Default: pairs].
         -N, --no-clean-up       If enabled, remove the temporary files.
         -o, --outdir=DIR        Path to the output directory where the output
                                 will be written. Default current directory.
+        -q, --pairs=STR         Path of the pairs file separated by a comma.
         -p, --phages-data=FILE  Path to the bacterial host associated to the
                                 phages contigs generated with metavir host.
         -P, --plot              If enable, make summary plots.
+        -r, --random            If enable, make a random binning.
         -t, --threads=INT       Number of threads to use for checkV.
                                 [Default: 1]
         -T, --tmpdir=DIR        Path to temporary directory. [Default: ./tmp]
@@ -158,17 +164,33 @@ class Binning(AbstractCommand):
         if not self.args["--checkv-db"]:
             self.args["--checkv-db"] = os.getenv("CHECKVD")
 
+        # Sanity check
+        if self.args["--method"] == "pairs" and not self.args["--pairs"]:
+            logger.error("Pair file is necessary if method is pairs.")
+            raise ValueError
+
+        if self.args["--method"] == "metabat" and not self.args["--depth"]:
+            logger.error("Depth file is necessary if method is metabat.")
+            raise ValueError
+
+        pairs_files = self.args["--pairs"]
+        if pairs_files:
+            pairs_files = pairs_files.split(",")
+
         # Run the phages binning
         mtb.phage_binning(
             self.args["--checkv-db"],
             self.args["--depth"],
             self.args["--fasta"],
-            self.args["--phages-data"],
             self.args["--outdir"],
+            pairs_files,
+            self.args["--phages-data"],
             self.args["--plot"],
             remove_tmp,
             int(self.args["--threads"]),
             tmp_dir,
+            self.args["--method"],
+            self.args["--random"],
         )
 
         # Delete the temporary folder.
@@ -182,9 +204,10 @@ class Pipeline(AbstractCommand):
     """Run both host and binning command sequentially.
 
     usage:
-        pipeline --binning=FILE --contig-data=FILE --depth=FILE --fasta=FILE
-        [--checkv-db=DIR] --network=FILE --phages=FILE  [--no-clean-up]
-        [--outdir=DIR] [--plot] [--threads=1] [--tmpdir=DIR]
+        pipeline --binning=FILE --contig-data=FILE --fasta=FILE --network=FILE
+        --phages=FILE [--depth=FILE] [--checkv-db=DIR] [--method=pairs]
+        [--no-clean-up] [--outdir=DIR] [--pairs=STR] [--plot] [--random]
+        [--threads=1] [--tmpdir=DIR]
 
     options:
         -b, --binning=FILE      Path to the anvio binning file.
@@ -196,12 +219,15 @@ class Pipeline(AbstractCommand):
                                 jgi_summarize_bam_contig_depths.
         -f, --fasta=FILE        Path to the fasta file with tha phage contigs
                                 sequences.
+        -m, --method=STR        Method for the binning. Either metabat or pairs.
         -n, --network=FILE      Path to the network file.
         -N, --no-clean-up       If enabled, remove the temporary files.
         -o, --outdir=DIR        Path to the output directory where the output
                                 will be written. Default current directory.
+        -q, --pairs=STR         Path of the pairs file separated by a comma.
         -p, --phages=FILE       Path to the file with phages contigs list.
-        -P, --plot              If enable, make summary plots. 
+        -P, --plot              If enable, make summary plots.
+        -r, --random            If enable, make a random binning.
         -t, --threads=INT       Number of threads to use for checkV.
                                 [Default: 1]
         -T, --tmpdir=DIR        Path to temporary directory. [Default: ./tmp]
@@ -227,6 +253,19 @@ class Pipeline(AbstractCommand):
         # Set checkV database path
         if not self.args["--checkv-db"]:
             self.args["--checkv-db"] = os.getenv("CHECKVD")
+
+        # Sanity check
+        if self.args["--method"] == "pairs" and not self.args["--pairs"]:
+            logger.error("Pair file is necessary if method is pairs.")
+            raise ValueError
+
+        if self.args["--method"] == "metabat" and not self.args["--depth"]:
+            logger.error("Depth file is necessary if method is metabat.")
+            raise ValueError
+
+        pairs_files = self.args["--pairs"]
+        if pairs_files:
+            pairs_files = pairs_files.split(",")
 
         # Import the files
         binning_result = mio.import_anvio_binning(self.args["--binning"])
@@ -251,12 +290,15 @@ class Pipeline(AbstractCommand):
             self.args["--checkv-db"],
             self.args["--depth"],
             self.args["--fasta"],
-            out_file,
             self.args["--outdir"],
+            self.args["--pairs"],
+            out_file,
             self.args["--plot"],
             remove_tmp,
             int(self.args["--threads"]),
             tmp_dir,
+            self.args["--method"],
+            self.args["--random"],
         )
 
         # Delete the temporary folder.
