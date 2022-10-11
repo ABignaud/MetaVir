@@ -5,3 +5,4 @@ networkx
 numpy
 pandas
 pyfastx
+pypairix
