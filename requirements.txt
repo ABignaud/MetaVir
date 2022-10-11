@@ -1,5 +1,6 @@
 checkv
 docopt
+matplotlib
 networkx
 numpy
 pandas
