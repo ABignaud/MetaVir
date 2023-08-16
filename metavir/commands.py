@@ -117,11 +117,14 @@ class Binning(AbstractCommand):
     between contigs.
 
     usage:
-        binning --fasta=FILE --phages-data=FILE [--checkv-db=DIR] [--depth=FILE]
-        [--method=pairs] [--no-clean-up] [--outdir=DIR] [--pairs=STR] [--plot]
-        [--random] [--threads=1] [--tmpdir=DIR]
+        binning --network=FILE --binning=FILE --phages=FILE --contigs-data=FILE --fasta=FILE 
+        [--checkv-db=DIR] [--depth=FILE] [--method=pairs] [--no-clean-up] 
+        [--outdir=DIR] [--pairs=STR] [--plot] [--random] [--threads=1] 
+        [--tmpdir=DIR] [--threshold=1]
 
     options:
+        -b, --binning=FILE      Path to the anvio binning file.
+        -c, --contigs-data=FILE  Path to the MetaTOR contig data file.
         --checkv-db=DIR         Directory where the checkV database is stored.
                                 By default the CHECKVDB environment variable is
                                 used.
@@ -131,95 +134,6 @@ class Binning(AbstractCommand):
                                 sequences.
         -m, --method=STR        Method for the binning. Either 'metabat' or
                                 'pairs' [Default: pairs].
-        -N, --no-clean-up       If enabled, remove the temporary files.
-        -o, --outdir=DIR        Path to the output directory where the output
-                                will be written. Default current directory.
-        -q, --pairs=STR         Path of the pairs file separated by a comma.
-        -p, --phages-data=FILE  Path to the bacterial host associated to the
-                                phages contigs generated with metavir host.
-        -P, --plot              If enable, make summary plots.
-        -r, --random            If enable, make a random binning.
-        -t, --threads=INT       Number of threads to use for checkV.
-                                [Default: 1]
-        -T, --tmpdir=DIR        Path to temporary directory. [Default: ./tmp]
-    """
-
-    def execute(self):
-        # Defined the temporary directory.
-        if not self.args["--tmpdir"]:
-            self.args["--tmpdir"] = "./tmp"
-        tmp_dir = mio.generate_temp_dir(self.args["--tmpdir"])
-        # Defined the output directory and output file names.
-        if not self.args["--outdir"]:
-            self.args["--outdir"] = "."
-        os.makedirs(self.args["--outdir"], exist_ok=True)
-
-        # Set remove tmp for checkV.
-        if not self.args["--no-clean-up"]:
-            remove_tmp = True
-        else:
-            remove_tmp = False
-
-        # Set checkV database path
-        if not self.args["--checkv-db"]:
-            self.args["--checkv-db"] = os.getenv("CHECKVD")
-
-        # Sanity check
-        if self.args["--method"] == "pairs" and not self.args["--pairs"]:
-            logger.error("Pair file is necessary if method is pairs.")
-            raise ValueError
-
-        if self.args["--method"] == "metabat" and not self.args["--depth"]:
-            logger.error("Depth file is necessary if method is metabat.")
-            raise ValueError
-
-        pairs_files = self.args["--pairs"]
-        if pairs_files:
-            pairs_files = pairs_files.split(",")
-
-        # Run the phages binning
-        mtb.phage_binning(
-            self.args["--checkv-db"],
-            self.args["--depth"],
-            self.args["--fasta"],
-            self.args["--outdir"],
-            pairs_files,
-            self.args["--phages-data"],
-            self.args["--plot"],
-            remove_tmp,
-            int(self.args["--threads"]),
-            tmp_dir,
-            self.args["--method"],
-            self.args["--random"],
-        )
-
-        # Delete the temporary folder.
-        if remove_tmp:
-            shutil.rmtree(tmp_dir)
-            # Delete pyfastx index:
-            os.remove(self.args["--fasta"] + ".fxi")
-
-
-class Pipeline(AbstractCommand):
-    """Run both host and binning command sequentially.
-
-    usage:
-        pipeline --binning=FILE --contig-data=FILE --fasta=FILE --network=FILE
-        --phages=FILE [--depth=FILE] [--checkv-db=DIR] [--method=pairs]
-        [--no-clean-up] [--outdir=DIR] [--pairs=STR] [--plot] [--random]
-        [--threads=1] [--tmpdir=DIR]
-
-    options:
-        -b, --binning=FILE      Path to the anvio binning file.
-        -c, --contig-data=FILE  Path to the MetaTOR contig data file.
-        --checkv-db=DIR         Directory where the checkV database is stored.
-                                By default the CHECKVDB environment variable is
-                                used.
-        -d, --depth=FILE        Path to the depth file from metabat2 script:
-                                jgi_summarize_bam_contig_depths.
-        -f, --fasta=FILE        Path to the fasta file with tha phage contigs
-                                sequences.
-        -m, --method=STR        Method for the binning. Either metabat or pairs.
         -n, --network=FILE      Path to the network file.
         -N, --no-clean-up       If enabled, remove the temporary files.
         -o, --outdir=DIR        Path to the output directory where the output
@@ -228,13 +142,13 @@ class Pipeline(AbstractCommand):
         -p, --phages=FILE       Path to the file with phages contigs list.
         -P, --plot              If enable, make summary plots.
         -r, --random            If enable, make a random binning.
+        -s, --threshold=FLOAT   Threshold to use for binning. [Default=1]
         -t, --threads=INT       Number of threads to use for checkV.
                                 [Default: 1]
         -T, --tmpdir=DIR        Path to temporary directory. [Default: ./tmp]
     """
 
     def execute(self):
-
         # Defined the temporary directory.
         if not self.args["--tmpdir"]:
             self.args["--tmpdir"] = "./tmp"
@@ -270,39 +184,33 @@ class Pipeline(AbstractCommand):
         # Import the files
         binning_result = mio.import_anvio_binning(self.args["--binning"])
         phages_list = mio.import_phages_contigs(self.args["--phages"])
-        contig_data, phages_list_id = mio.import_contig_data_phages(
-            self.args["--contig-data"], binning_result, phages_list
+        contigs_data, phages_list_id = mio.import_contig_data_phages(
+            self.args["--contigs-data"], binning_result, phages_list
         )
         network = mio.import_network(self.args["--network"])
-        out_file = join(self.args["--outdir"], "phages_data_host.tsv")
-
-        # Run the host detection
-        mth.host_detection(
-            network,
-            contig_data,
-            phages_list,
-            phages_list_id,
-            out_file,
-        )
 
         # Run the phages binning
         mtb.phage_binning(
-            self.args["--checkv-db"],
-            self.args["--depth"],
-            self.args["--fasta"],
-            self.args["--outdir"],
-            self.args["--pairs"],
-            out_file,
-            self.args["--plot"],
-            remove_tmp,
-            int(self.args["--threads"]),
-            tmp_dir,
-            self.args["--method"],
-            self.args["--random"],
+            checkv_db=self.args["--checkv-db"],
+            depth_file=self.args["--depth"],
+            fasta_phages_contigs=self.args["--fasta"],
+            network=network,
+            contigs_data=contigs_data,
+            phages_list_id=phages_list_id,
+            out_dir=self.args["--outdir"],
+            pairs_files=pairs_files,
+            tmp_dir=tmp_dir,
+            threshold=float(self.args["--threshold"]),
+            association=True,
+            plot=self.args["--plot"],
+            remove_tmp=remove_tmp,
+            threads=int(self.args["--threads"]),
+            method=self.args["--method"],
+            random=self.args["--random"],
         )
 
         # Delete the temporary folder.
         if remove_tmp:
             shutil.rmtree(tmp_dir)
-            # Delete the pyfastx index.
+            # Delete pyfastx index:
             os.remove(self.args["--fasta"] + ".fxi")

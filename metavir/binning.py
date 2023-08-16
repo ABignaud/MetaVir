@@ -170,13 +170,13 @@ def build_phage_depth(
 
 
 def generate_bin_summary(
-    contig_data: "pd.DataFrame", phage_bins: dict, outfile: str
+    contigs_data: "pd.DataFrame", phage_bins: dict, outfile: str
 ) -> "pd.DataFrame":
     """Function to generate and write the phage binning summary.
 
     Parameters
     ----------
-    contig_data : pd.DataFrame
+    contigs_data : pd.DataFrame
         Table with contig information from metator.
     phage_bins : dict
         Dictionnary with the phage bin id as key and the list of the contigs
@@ -203,7 +203,7 @@ def generate_bin_summary(
         "Contigs": pd.Series(dtype="str"),
     }
     summary = pd.DataFrame(cols, index=phage_bins.keys())
-
+    contigs_data.set_index('Name', drop=False, inplace=True)
     # Iterates on the bins to fill the table.
     for bin_id in phage_bins.keys():
         summary.loc[bin_id, "BinName"] = f"MetaVir_{bin_id:05d}"
@@ -218,11 +218,11 @@ def generate_bin_summary(
         summary.loc[bin_id, "AssociatedBins"] = phage_bins[bin_id]["BinList"]
         length, hit, gc = 0, 0, 0
         for contig in contigs:
-            length += contig_data.loc[contig, "Size"]
-            hit += contig_data.loc[contig, "Hit"]
+            length += contigs_data.loc[contig, "Size"]
+            hit += contigs_data.loc[contig, "Hit"]
             gc += (
-                contig_data.loc[contig, "GC_content"]
-                * contig_data.loc[contig, "Size"]
+                contigs_data.loc[contig, "GC_content"]
+                * contigs_data.loc[contig, "Size"]
             )
         summary.loc[bin_id, "BinLength"] = length
         summary.loc[bin_id, "Hit"] = hit
@@ -397,9 +397,11 @@ def phage_binning(
     checkv_db: str,
     depth_file: str,
     fasta_phages_contigs: str,
+    network: "networkx.classes.graph.Graph",
+    contigs_data: "pandas.DataFrame",
+    phages_list_id: List[int],
     out_dir: str,
     pairs_files: List[str],
-    phages_data_file: str,
     tmp_dir: str,
     threshold: float = 1,
     association: bool = True,
@@ -423,13 +425,20 @@ def phage_binning(
     fasta_phages_contigs : str
         Path to the fasta containing the phages sequences. It could contain
         other sequences.
+    network : networkx.classes.graph.Graph
+        MetaTOR network of the HiC data.
+    contig_data : pandas.DataFrame
+        Table with the contig name as keys and with the values of the
+        contig id the associated bin name, and either if the contig is binned
+        and if it's a phage contig. The name of the keys are "id", "bin",
+        "binned", "phage".
+    phages_list_id : list of int
+        List of the phages contigs IDs.
     out_dir : str
         Path to the directory where to write the output data.
     pairs_files : List of str
         List of the path of the pairs file from the alignment. If possible index
         them first using pypairix.
-    phages_data_file : str
-        Path to the output file from metavir host detection workflow.
     tmp_dir : str
         Path to temporary directory for intermediate files.
     threshold : float
@@ -466,7 +475,7 @@ def phage_binning(
     # )
 
     # Import host data from the previous step.
-    phages_data = pd.read_csv(phages_data_file, sep="\t", index_col=0)
+    phages_data = pd.DataFrame(contigs_data.loc[phages_list_id, :])
 
     if method == "pairs":
         with open(contigs_file, "w") as f:
@@ -510,7 +519,9 @@ def phage_binning(
 
     for bin_id in phage_bins:
         if association:
-            phage_bins[bin_id] = mth.asociate_bin(phage_bins[bin_id])
+            phage_bins[bin_id] = mth.asociate_bin(
+                phage_bins[bin_id], network, contigs_data
+            )
         else:
             phage_bins[bin_id]["Bin"] = "None"
             phage_bins[bin_id]["AssociationScore"] = np.nan
@@ -640,7 +651,7 @@ def run_metabat(
     return metabat
 
 
-def resolve_matrix(mat: "np.ndarray", threshold: float = 1.0) -> List(Tuple):
+def resolve_matrix(mat: "np.ndarray", threshold: float = 1.0) -> List[Tuple]:
     """Main function to bin phages contigs.
 
     From the marix of contacts associates the contigs with a lot of

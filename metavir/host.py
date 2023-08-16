@@ -14,6 +14,7 @@ Main function to call the class and build the ouput is host_detection.
 
 
 import networkx
+import numpy as np
 import pandas as pd
 from metavir.log import logger
 from typing import List
@@ -184,7 +185,7 @@ def asociate_bin(
             subnetwork = network.edges(network_id, data="weight")
             # Remove edges inside the bin.
             subnetwork = [
-                edge for edge in subnetwork if (i[1] not in network_id)
+                edge for edge in subnetwork if (edge[1] not in network_id)
             ]
             if len(subnetwork) > 0:
                 sub = Subnetwork(subnetwork)
@@ -227,8 +228,8 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
     -----------
     network : networkx.classes.graph.Graph
         MetaTOR network of the HiC data.
-    contig_data : dict
-        Dictionnary with the contig name as keys and with the values of the
+    contig_data : pandas.DataFrame
+        Table with the contig name as keys and with the values of the
         contig id the associated bin name, and either if the contig is binned
         and if it's a phage contig. The name of the keys are "id", "bin",
         "binned", "phage".
