@@ -16,6 +16,7 @@ Main function to call the class and build the ouput is host_detection.
 import networkx
 import pandas as pd
 from metavir.log import logger
+from typing import List
 
 
 class Subnetwork:
@@ -129,6 +130,95 @@ class Subnetwork:
                 c += 1
         return c
 
+    def getScoreList(self):
+        """Return the list of connected bin with respective scores.
+
+        Returns:
+        --------
+        str:
+            List of bins with scores separaeted by '-' (bin_name:score).
+        """
+        score_list = []
+        for bin_name in self.bins:
+            score_list.append(f'{bin_name}:{self.bins[bin_name]["score"]}')
+        return "-".join(score_list)
+
+
+def asociate_bin(
+    bin_contigs: dict,
+    network: "networkx.classes.graph.Graph",
+    contig_data: "pandas.DataFrame",
+) -> dict:
+    """Function to associate one bin to one MAG.
+
+    Parameters
+    ----------
+    bin_contigs : dict
+        Dictionnary with the name of the contigs.
+    network : networkx.classes.graph.Graph
+        MetaTOR network of the HiC data.
+    contig_data : dict
+        Dictionnary with the contig name as keys and with the values of the
+        contig id the associated bin name, and either if the contig is binned
+        and if it's a phage contig. The name of the keys are "id", "bin",
+        "binned", "phage".
+
+    Return
+    ------
+    dict :
+        Updated dictionnary with the associated MAG.
+    """
+    # Transform from contig to id
+    contigs_id = [
+        list(contig_data.index[contig_data.Name == name])[0]
+        for name in bin_contigs["Contigs"]
+    ]
+    network_id = [i + 1 for i in contigs_id]
+    # Do not compute subnetwork with no HiC contacts.
+    if (
+        np.sum([contig_data.loc[contig_id, "Hit"] for contig_id in contigs_id])
+        > 0
+    ):
+        # Manage the case of the self interacting contigs.
+        try:
+            subnetwork = network.edges(network_id, data="weight")
+            # Remove edges inside the bin.
+            subnetwork = [
+                edge for edge in subnetwork if (i[1] not in network_id)
+            ]
+            if len(subnetwork) > 0:
+                sub = Subnetwork(subnetwork)
+                sub.setScore()
+                sub.setBinScore(contig_data)
+                bin_name, score = sub.getMaxBinScore()
+                count = sub.getBinScore()
+                if count == 0:
+                    bin_contigs["Bin"] = "None"
+                    bin_contigs["AssociationScore"] = score
+                    bin_contigs["BinList"] = sub.getScoreList()
+                elif count == 1:
+                    bin_contigs["Bin"] = bin_name
+                    bin_contigs["AssociationScore"] = score
+                    bin_contigs["BinList"] = sub.getScoreList()
+                else:
+                    bin_contigs["Bin"] = "Multiple"
+                    bin_contigs["AssociationScore"] = score
+                    bin_contigs["BinList"] = sub.getScoreList()
+            else:
+                bin_contigs["Bin"] = "None"
+                bin_contigs["AssociationScore"] = np.nan
+                bin_contigs["BinList"] = "NA"
+        # No contacts with others contigs.
+        except networkx.exception.NetworkXError:
+            bin_contigs["Bin"] = "None"
+            bin_contigs["AssociationScore"] = np.nan
+            bin_contigs["BinList"] = "NA"
+    else:  # No HiC coverage.
+        bin_contigs["Bin"] = "None"
+        bin_contigs["AssociationScore"] = np.nan
+        bin_contigs["BinList"] = "NA"
+    return bin_contigs
+
 
 def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
     """Main function to detect the host.
@@ -161,7 +251,7 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
     phage_data["Host"] = "ND"
     A, B, C = 0, 0, 0
     for contig_id in phages_list_id:
-        network_id = contig_id + 1
+        network_id = contig_id + 1  # 1-based in network
         contig = contig_data.loc[contig_id, "Name"]
         # Do not compute subnetwork with no HiC contacts.
         if contig_data.loc[contig_id, "Hit"] > 0:
@@ -175,27 +265,20 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
                 count = sub.getBinScore()
                 if count == 0:
                     C += 1
-                    phage_data.loc[
-                        contig_id, "Host"
-                    ] = "No associated bin. ID: " + str(C)
+                    phage_data.loc[contig_id, "Host"] = "None"
                 elif count == 1:
                     A += 1
                     phage_data.loc[contig_id, "Host"] = bin_name
                 else:
                     B += 1
-                    phage_data.loc[
-                        contig_id, "host"
-                    ] = "More than one associated bin. ID: " + str(B)
+                    phage_data.loc[contig_id, "Host"] = "Multiple"
+            # No contacts with others contigs.
             except networkx.exception.NetworkXError:
                 C += 1
-                phage_data.loc[
-                    contig_id, "Host"
-                ] = "No associated bin. ID: " + str(C)
-        else:
+                phage_data.loc[contig_id, "Host"] = "None"
+        else:  # No HiC coverage.
             C += 1
-            phage_data.loc[contig_id, "Host"] = "No associated bin. ID: " + str(
-                C
-            )
+            phage_data.loc[contig_id, "Host"] = "None"
 
     logger.info("{0} phages associated with one bin.".format(A))
     logger.info("{0} phages associated with more than one bin.".format(B))

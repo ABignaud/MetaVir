@@ -31,6 +31,7 @@ import pandas as pd
 import pypairix
 import subprocess as sp
 from metavir.log import logger
+import metavir.host as mth
 from os.path import join
 import shutil
 from typing import List, Tuple
@@ -196,6 +197,8 @@ def generate_bin_summary(
         "Score": pd.Series(dtype="float"),
         "ContigsNumber": pd.Series(dtype="int"),
         "MetagenomicBin": pd.Series(dtype="str"),
+        "AssociationScore": pd.Series(dtype="str"),
+        "AssociatedBins": pd.Series(dtype="str"),
         "Hit": pd.Series(dtype="int"),
         "Contigs": pd.Series(dtype="str"),
     }
@@ -207,8 +210,12 @@ def generate_bin_summary(
         contigs = phage_bins[bin_id]["Contigs"]
         summary.loc[bin_id, "ContigsNumber"] = len(contigs)
         summary.loc[bin_id, "Contigs"] = ",".join(contigs)
-        summary.loc[bin_id, "Score"] = phage_bins[bin_id]["Score"]
+        summary.loc[bin_id, "BinningScore"] = phage_bins[bin_id]["Score"]
         summary.loc[bin_id, "MetagenomicBin"] = phage_bins[bin_id]["Bin"]
+        summary.loc[bin_id, "AssociationScore"] = phage_bins[bin_id][
+            "AssociationScore"
+        ]
+        summary.loc[bin_id, "AssociatedBins"] = phage_bins[bin_id]["BinList"]
         length, hit, gc = 0, 0, 0
         for contig in contigs:
             length += contig_data.loc[contig, "Size"]
@@ -395,6 +402,7 @@ def phage_binning(
     phages_data_file: str,
     tmp_dir: str,
     threshold: float = 1,
+    association: bool = True,
     plot: bool = False,
     remove_tmp: bool = True,
     threads: int = 1,
@@ -426,6 +434,8 @@ def phage_binning(
         Path to temporary directory for intermediate files.
     threshold : float
         Threshold of score to bin contigs. [Default: 1.]
+    association : bool
+        Either to associate bin with a MAG or not. [Default: True]
     plot : bool
         If True make some summary plots.
     remove_tmp : bool
@@ -500,9 +510,11 @@ def phage_binning(
 
     for bin_id in phage_bins:
         if association:
-            phage_bins[bin_id]["Bin"] = mtb.asociate(phage_bins)
+            phage_bins[bin_id] = mth.asociate_bin(phage_bins[bin_id])
         else:
-            phage_bins[bin_id]["Bin"] = np.nan
+            phage_bins[bin_id]["Bin"] = "None"
+            phage_bins[bin_id]["AssociationScore"] = np.nan
+            phage_bins[bin_id]["BinList"] = "NA"
 
     summary = generate_bin_summary(phages_data, phage_bins, phage_data_file)
 
