@@ -6,7 +6,6 @@
 This module contains all classes related to MetaVir commands:
     - host
     - binning
-    - pipeline
 
 Note
 ----
