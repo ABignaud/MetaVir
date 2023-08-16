@@ -10,6 +10,7 @@ information.
 Core function to partition phages contigs:
     - build_matrix
     - build_phage_depth
+    - generate_bin_summary
     - generate_phages_bins_metabat
     - generate_phages_bins_pairs
     - generate_phages_fasta
@@ -32,6 +33,7 @@ import subprocess as sp
 from metavir.log import logger
 from os.path import join
 import shutil
+from typing import List, Tuple
 
 
 def build_matrix(contigs, contigs_size, pairs_files):
@@ -159,6 +161,68 @@ def build_phage_depth(contigs_file, depth_file, phages_data, phage_depth_file):
     phage_depth.to_csv(phage_depth_file, sep="\t", index=False)
 
 
+def generate_bin_summary(
+    contig_data: "pd.DataFrame", phage_bins: dict, outfile: str
+) -> "pd.DataFrame":
+    """Function to generate and write the phage binning summary.
+
+    Parameters
+    ----------
+    contig_data : pd.DataFrame
+        Table with contig information from metator.
+    phage_bins : dict
+        Dictionnary with the phage bin id as key and the list of the contigs
+        name as value.
+    outfile : str
+        Output file where to write the summary table. 
+
+    Return
+    ------
+    pd.DataFrame :
+        Summary table of the vrial bins. 
+    """
+    # Create output empty DataFrame
+    cols = {
+        'BinName': pd.Series(dtype='str'),
+        'BinLength': pd.Series(dtype='int'),
+        'GC': pd.Series(dtype='float'),
+        'Score': pd.Series(dtype='float'),
+        'ContigsNumber': pd.Series(dtype='int'),
+        'MetagenomicBin': pd.Series(dtype='str'),
+        'Hit': pd.Series(dtype='int'),
+        'Contigs': pd.Series(dtype='str'),
+    }
+    summary = pd.DataFrame(cols, index=phage_bins.keys())
+
+    # Iterates on the bins to fill the table.
+    for bin_id in phage_bins.keys():
+        summary.loc[bin_id, 'BinName'] = f'MetaVir_{bin_id:05d}'
+        contigs = phage_bins[bin_id]['Contigs']
+        summary.loc[bin_id, 'ContigsNumber'] = len(contigs)
+        summary.loc[bin_id, 'Contigs'] = ','.join(contigs)
+        summary.loc[bin_id, 'Score'] =  phage_bins[bin_id]['Score']
+        summary.loc[bin_id, 'MetagenomicBin'] =  phage_bins[bin_id]['Bin']
+        length, hit, gc = 0, 0, 0
+        for contig in contigs:
+            length += contig_data.loc[contig, 'Size']
+            hit += contig_data.loc[contig, 'Hit']
+            gc += contig_data.loc[contig, 'GC_content'] * contig_data.loc[contig, 'Size']
+        summary.loc[bin_id, 'BinLength'] = length
+        summary.loc[bin_id, 'Hit'] = hit
+        summary.loc[bin_id, 'GC'] = gc / length
+    
+    # Write the summary.
+    summary.to_csv(
+        outfile, 
+        sep='\t',
+        na_rep='NA',
+        float_format='%.2f',
+        header=True,
+        index=False,
+    )
+    return summary
+
+
 def generate_phage_bins_metabat(phages_data):
     """Generates the binning of the phages contigs based on both HiC
     information (host detection) and the coverage and sequences information
@@ -195,14 +259,15 @@ def generate_phage_bins_metabat(phages_data):
         try:
             bin_id_old = bins_ids[phage_id]
             phages_data.loc[contig, "MetaVir_bin"] = bin_id_old
-            phage_bins[bin_id_old].append(phages_data.loc[contig, "Name"])
+            phage_bins[bin_id_old]['Contig'].append(phages_data.loc[contig, "Name"])
         # Increment the bin id if it's the first time the phage id have been
         # seen.
         except KeyError:
             bin_id += 1
             bins_ids[phage_id] = bin_id
             phages_data.loc[contig, "MetaVir_bin"] = bin_id
-            phage_bins[bin_id] = [phages_data.loc[contig, "Name"]]
+            phage_bins[bin_id]['Contig'] = [phages_data.loc[contig, "Name"]]
+            phage_bins[bin_id]['Score'] = np.nan 
     return phages_data, phage_bins
 
 
@@ -271,11 +336,11 @@ def generate_phages_fasta(fasta, phage_bins, out_file, tmp_dir):
     with open(out_file, "w") as out:
         for bin_id in phage_bins:
             # Extract the list of the contigs from the contigs data file.
-            list_contigs_name = phage_bins[bin_id]
+            list_contigs_name = phage_bins[bin_id]['Contigs']
             nb_bins += 1
             # Create a temporary fasta file.
-            contigs_file = join(tmp_dir, f"MetaVIR_{bin_id}.txt")
-            temp_file = join(tmp_dir, f"MetaVIR_{bin_id}.fa")
+            contigs_file = join(tmp_dir, f"MetaVIR_{bin_id:05d}.txt")
+            temp_file = join(tmp_dir, f"MetaVIR_{bin_id:05d}.fa")
             with open(contigs_file, "w") as f:
                 for contig_name in list_contigs_name:
                     f.write("%s\n" % contig_name)
@@ -291,7 +356,7 @@ def generate_phages_fasta(fasta, phage_bins, out_file, tmp_dir):
                     if line.startswith(">"):
                         if start:
                             start = False
-                            out.write((f">MetaVIR_{bin_id}\n"))
+                            out.write((f">MetaVIR_{bin_id:05d}\n"))
                         else:
                             out.write(
                                 "N" * 200
@@ -355,7 +420,7 @@ def phage_binning(
     contigs_file = join(tmp_dir, "phage_contigs.txt")
     temp_fasta = join(tmp_dir, "phages.fa")
     metabat_output = join(tmp_dir, "metabat_phages_binning.tsv")
-    phage_data_file = join(out_dir, "phages_data_final.tsv")
+    phage_data_file = join(out_dir, "phages_bin_summary.tsv")
     fasta_phages_bins = join(out_dir, "phages_binned.fa")
     checkv_dir_contigs = join(out_dir, "checkV_contigs")
     checkv_dir_bins = join(out_dir, "checkV_bins")
@@ -406,13 +471,18 @@ def phage_binning(
         # Shuffle to simulate random bins. Uncomment to do it
         phages_data, phage_bins = shuffle_phage_bins(phages_data)
 
-    # Write phages data
-    mio.write_phage_data(phages_data, phage_data_file)
-
     # Generate fasta for checkV quality check.
     generate_phages_fasta(
         fasta_phages_contigs, phage_bins, fasta_phages_bins, tmp_dir
     )
+
+    for bin_id in phage_bins:
+        if association:
+            phage_bins[bin_id]["Bin"] = mtb.asociate(phage_bins)
+        else:
+            phage_bins[bin_id]["Bin"] = np.nan
+
+    summary = generate_bin_summary(phages_data, phage_bins, phage_data_file)
 
     # Run checkV on phage contigs and bins.
     if plot:
@@ -528,7 +598,7 @@ def run_metabat(
     return metabat
 
 
-def resolve_matrix(mat):
+def resolve_matrix(mat: "np.ndarray", threshold: float = 1.0) -> List(Tuple):
     """Main function to bin phages contigs.
 
     From the marix of contacts associates the contigs with a lot of
@@ -542,6 +612,8 @@ def resolve_matrix(mat):
     mat : np.array
         Matrix of the raw contacts between the contigs. Upper triangle and the
         contacts in intra below 1000bp are not kept.
+    threshold : float
+        Threshold of score to bin contigs. [Default: 1]
 
     Returns:
     List of tuple:
@@ -567,7 +639,7 @@ def resolve_matrix(mat):
 
     # While there is an association bigger than 1 associates the contigs.
     maxi = np.max(mat)
-    while maxi > 1:
+    while maxi > threshold:
         # Handle the case where we have multiple points at the maximum value.
         try:
             i, j = map(int, np.where(mat == maxi))
@@ -601,7 +673,7 @@ def resolve_matrix(mat):
         mat0[j, :] = np.zeros(n)
         mat0[:, j] = np.zeros(n)
 
-        bins.append([i, j])
+        bins.append([i, j, maxi])
         maxi = np.max(mat)
 
     return bins
@@ -638,28 +710,45 @@ def shuffle_phage_bins(phages_data):
         contig = phages_data.loc[index, "Name"]
         phage_bin_id = phages_data.loc[index, "shuffle"]
         try:
-            phages_bins[phage_bin_id].append(contig)
+            phages_bins[phage_bin_id]['Contig'] .append(contig)
         except KeyError:
-            phages_bins[phage_bin_id] = [contig]
-
+            phages_bins[phage_bin_id]['Contig']  = [contig]
+            phages_bins[phage_bin_id]['Score'] = np.nan
     return phages_data, phages_bins
 
 
 def update_phage_data(phages_data, bins):
+    """Function to update the paheg bins data.
 
+    Parameters
+    ----------
+    phages_data : pd.DataFrame
+        Table wit the phage contig information.
+    bins : list of tuple
+        List of pairs of contigs with their score of association.
+
+    Returns
+    -------
+    pandas.DataFrame :
+        Table wit the phage contig information updated.
+    dictionnnary :
+        Dictionnary of the phage bins.
+    """
     # Initiation
     phages_data["MetaVir_bin"] = 0
+    phages_data["MetaVir_Score"] = 0
     bin_id = 0
     phage_bins = {}
     phages_data.set_index(np.arange(len(phages_data)), inplace=True)
     for contig_tuple in bins:
-        i, j = contig_tuple
+        i, j, score = contig_tuple
         # If no existing bin, creates one.
         if (phages_data.loc[i, "MetaVir_bin"] == 0) and (
             phages_data.loc[j, "MetaVir_bin"] == 0
         ):
             bin_id += 1
             current_bin = bin_id
+            current_score = score
         # If one existing bin, append it.
         elif (phages_data.loc[i, "MetaVir_bin"] == 0) or (
             phages_data.loc[j, "MetaVir_bin"] == 0
@@ -668,6 +757,10 @@ def update_phage_data(phages_data, bins):
                 phages_data.loc[i, "MetaVir_bin"],
                 phages_data.loc[j, "MetaVir_bin"],
             )
+            current_score = min(score, max(
+                phages_data.loc[i, "MetaVir_Score"],
+                phages_data.loc[j, "MetaVir_Score"],
+            ))
         # Complicated case as we have to fuse two existing bins. The bin j
         # is not reused.
         else:
@@ -681,20 +774,38 @@ def update_phage_data(phages_data, bins):
                     phages_data.loc[k, "MetaVir_bin"] = current_bin
                 elif phages_data.loc[k, "MetaVir_bin"] > bin_j:
                     phages_data.loc[k, "MetaVir_bin"] -= 1
+            current_score = min(
+                score,
+                phages_data.loc[i, "MetaVir_Score"],
+                phages_data.loc[j, "MetaVir_Score"],
+            )   
         phages_data.loc[i, "MetaVir_bin"] = current_bin
         phages_data.loc[j, "MetaVir_bin"] = current_bin
+        phages_data.loc[i, "MetaVir_Score"] = current_score
+        phages_data.loc[j, "MetaVir_Score"] = current_score
 
     # Update unbinned contigs and build phage bins.
     for k in phages_data.index:
         if phages_data.loc[k, "MetaVir_bin"] == 0:
             bin_id += 1
             phages_data.loc[k, "MetaVir_bin"] = bin_id
-            phage_bins[bin_id] = [phages_data.loc[k, "Name"]]
+            phage_bins[bin_id] = {
+                'Contigs': [phages_data.loc[k, "Name"]]
+                'Score': np.nan
+            }
         else:
             curr_bin = phages_data.loc[k, "MetaVir_bin"]
             try:
-                phage_bins[curr_bin].append(phages_data.loc[k, "Name"])
+                phage_bins[curr_bin]['Contig'].append(
+                    phages_data.loc[k, "Name"]
+                )
+                phage_bins[curr_bin]['Score'] = min(
+                    phage_bins[curr_bin]['Score'], 
+                    phages_data.loc[k, "MetaVir_Score"]
+                )
             except KeyError:
-                phage_bins[curr_bin] = [phages_data.loc[k, "Name"]]
-
+                phage_bins[curr_bin] = {
+                'Contigs': [phages_data.loc[k, "Name"]]
+                'Score': phages_data.loc[k, "MetaVir_Score"]
+            }
     return phages_data, phage_bins

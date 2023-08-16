@@ -173,4 +173,4 @@ def write_phage_data(phage_data, out_file):
         pass
 
     # Write the data frame
-    phage_data.to_csv(out_file, sep="\t")
+    phage_data.to_csv(out_file, sep="\t", index=False, float_format='%.2f')
