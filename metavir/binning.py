@@ -203,7 +203,7 @@ def generate_bin_summary(
         "Contigs": pd.Series(dtype="str"),
     }
     summary = pd.DataFrame(cols, index=phage_bins.keys())
-    contigs_data.set_index('Name', drop=False, inplace=True)
+    contigs_data.set_index("Name", drop=False, inplace=True)
     # Iterates on the bins to fill the table.
     for bin_id in phage_bins.keys():
         summary.loc[bin_id, "BinName"] = f"MetaVir_{bin_id:05d}"

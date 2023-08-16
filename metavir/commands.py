@@ -117,9 +117,9 @@ class Binning(AbstractCommand):
     between contigs.
 
     usage:
-        binning --network=FILE --binning=FILE --phages=FILE --contigs-data=FILE --fasta=FILE 
-        [--checkv-db=DIR] [--depth=FILE] [--method=pairs] [--no-clean-up] 
-        [--outdir=DIR] [--pairs=STR] [--plot] [--random] [--threads=1] 
+        binning --network=FILE --binning=FILE --phages=FILE --contigs-data=FILE --fasta=FILE
+        [--checkv-db=DIR] [--depth=FILE] [--method=pairs] [--no-clean-up]
+        [--outdir=DIR] [--pairs=STR] [--plot] [--random] [--threads=1]
         [--tmpdir=DIR] [--threshold=1]
 
     options:
