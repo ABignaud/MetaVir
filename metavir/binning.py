@@ -208,7 +208,7 @@ def generate_bin_summary(
     for bin_id in phage_bins.keys():
         summary.loc[bin_id, "BinName"] = f"MetaVir_{bin_id:05d}"
         contigs = phage_bins[bin_id]["Contigs"]
-        summary.loc[bin_id, "ContigsNumber"] = len(contigs)
+        summary.loc[bin_id, "ContigsNumber"] = f'{len(contigs):1d}'
         summary.loc[bin_id, "Contigs"] = ",".join(contigs)
         summary.loc[bin_id, "BinningScore"] = phage_bins[bin_id]["Score"]
         summary.loc[bin_id, "MetagenomicBin"] = phage_bins[bin_id]["Bin"]
@@ -224,8 +224,8 @@ def generate_bin_summary(
                 contigs_data.loc[contig, "GC_content"]
                 * contigs_data.loc[contig, "Size"]
             )
-        summary.loc[bin_id, "BinLength"] = length
-        summary.loc[bin_id, "Hit"] = hit
+        summary.loc[bin_id, "BinLength"] = f'{length:1d}'
+        summary.loc[bin_id, "Hit"] = f'{hit:1d}'
         summary.loc[bin_id, "GC"] = gc / length
 
     # Write the summary.

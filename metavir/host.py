@@ -141,7 +141,7 @@ class Subnetwork:
         """
         score_list = []
         for bin_name in self.bins:
-            score_list.append(f'{bin_name}:{self.bins[bin_name]["score"]}')
+            score_list.append(f'{bin_name}:{self.bins[bin_name]["score"]:%.1e}')
         return "-".join(score_list)
 
 
