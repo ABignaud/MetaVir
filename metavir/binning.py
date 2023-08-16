@@ -271,7 +271,7 @@ def generate_phage_bins_metabat(phages_data):
     return phages_data, phage_bins
 
 
-def generate_phage_bins_pairs(phages_data, pairs_files):
+def generate_phage_bins_pairs(phages_data: "pandas.DataFrame", pairs_files: List[str], threshold: float = 1.0) -> Tuple["pandas.DataFrame", dict]:
     """Generates the binning of the phages contigs based on both HiC
     information (host detection) and the coverage and sequences information
     (metabat2 binning).
@@ -284,6 +284,8 @@ def generate_phage_bins_pairs(phages_data, pairs_files):
     pairs_file : List of str
         List of the path of the pairs file from the alignment. If possible index
         them first using pypairix.
+    threshold : float
+        Threshold of score to bin contigs. [Default: 1.]
 
     Returns:
     --------
@@ -302,7 +304,7 @@ def generate_phage_bins_pairs(phages_data, pairs_files):
     mat = build_matrix(contigs, contigs_size, pairs_files)
 
     # Associates contigs
-    bins = resolve_matrix(mat)
+    bins = resolve_matrix(mat, threshold)
 
     # Update phages_data and generates bins.
     phages_data, phage_bins = update_phage_data(phages_data, bins)
@@ -367,18 +369,19 @@ def generate_phages_fasta(fasta, phage_bins, out_file, tmp_dir):
 
 
 def phage_binning(
-    checkv_db,
-    depth_file,
-    fasta_phages_contigs,
-    out_dir,
-    pairs_files,
-    phages_data_file,
-    plot,
-    remove_tmp,
-    threads,
-    tmp_dir,
-    method="pairs",
-    random=False,
+    checkv_db: str,
+    depth_file: str,
+    fasta_phages_contigs: str,
+    out_dir: str,
+    pairs_files: List[str],
+    phages_data_file: str,
+    tmp_dir: str,
+    threshold: float = 1,
+    plot: bool = False,
+    remove_tmp: bool = True,
+    threads: int = 1,
+    method: str = "pairs",
+    random: bool = False,
 ):
     """Main function to bin phages contigs.
 
@@ -394,8 +397,6 @@ def phage_binning(
     fasta_phages_contigs : str
         Path to the fasta containing the phages sequences. It could contain
         other sequences.
-    method : str
-        Method for the phage binning. Either 'pairs', 'metabat'.
     out_dir : str
         Path to the directory where to write the output data.
     pairs_files : List of str
@@ -403,16 +404,20 @@ def phage_binning(
         them first using pypairix.
     phages_data_file : str
         Path to the output file from metavir host detection workflow.
+    tmp_dir : str
+        Path to temporary directory for intermediate files.
+    threshold : float
+        Threshold of score to bin contigs. [Default: 1.]
     plot : bool
         If True make some summary plots.
-    random : bool
-        If enabled, make a andom shuffling of the bins.
     remove_tmp : bool
         If eneabled, remove temporary files of checkV.
     threads : int
         Number of threads to use for checkV.
-    tmp_dir : str
-        Path to temporary directory for intermediate files.
+    method : str
+        Method for the phage binning. Either 'pairs', 'metabat'.
+    random : bool
+        If enabled, make a andom shuffling of the bins.
     """
 
     # Create output and temporary files.
@@ -447,7 +452,7 @@ def phage_binning(
         process = sp.Popen(cmd, shell=True)
         process.communicate()
         phages_data, phage_bins = generate_phage_bins_pairs(
-            phages_data, pairs_files
+            phages_data, pairs_files, threshold
         )
 
     if method == "metabat":
@@ -613,7 +618,7 @@ def resolve_matrix(mat: "np.ndarray", threshold: float = 1.0) -> List(Tuple):
         Matrix of the raw contacts between the contigs. Upper triangle and the
         contacts in intra below 1000bp are not kept.
     threshold : float
-        Threshold of score to bin contigs. [Default: 1]
+        Threshold of score to bin contigs. [Default: 1.]
 
     Returns:
     List of tuple:
