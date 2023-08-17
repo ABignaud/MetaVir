@@ -194,13 +194,13 @@ def generate_bin_summary(
         "BinName": pd.Series(dtype="str"),
         "BinLength": pd.Series(dtype="int"),
         "GC": pd.Series(dtype="float"),
-        "Score": pd.Series(dtype="float"),
-        "ContigsNumber": pd.Series(dtype="int"),
-        "MetagenomicBin": pd.Series(dtype="str"),
-        "AssociationScore": pd.Series(dtype="str"),
-        "AssociatedBins": pd.Series(dtype="str"),
         "Hit": pd.Series(dtype="int"),
+        "BinningScore": pd.Series(dtype="float"),
+        "ContigsNumber": pd.Series(dtype="int"),
         "Contigs": pd.Series(dtype="str"),
+        "MetagenomicBin": pd.Series(dtype="str"),
+        "AssociationScore": pd.Series(dtype="float"),
+        "AssociatedBins": pd.Series(dtype="str"),
     }
     summary = pd.DataFrame(cols, index=phage_bins.keys())
     contigs_data.set_index("Name", drop=False, inplace=True)
@@ -728,7 +728,6 @@ def resolve_matrix(mat: "np.ndarray", threshold: float = 1.0) -> List[Tuple]:
 
         bins.append([i, j, maxi])
         maxi = np.max(mat)
-
     return bins
 
 
