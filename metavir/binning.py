@@ -295,7 +295,7 @@ def generate_phage_bins_metabat(
 def generate_phage_bins_pairs(
     phages_data: "pandas.DataFrame",
     pairs_files: List[str],
-    threshold: float = 1.0,
+    threshold: float = 0.8,
 ) -> Tuple["pandas.DataFrame", dict]:
     """Generates the binning of the phages contigs based on both HiC
     information (host detection) and the coverage and sequences information
@@ -310,7 +310,7 @@ def generate_phage_bins_pairs(
         List of the path of the pairs file from the alignment. If possible index
         them first using pypairix.
     threshold : float
-        Threshold of score to bin contigs. [Default: 1.]
+        Threshold of score to bin contigs. [Default: .8]
 
     Returns:
     --------
@@ -403,7 +403,8 @@ def phage_binning(
     out_dir: str,
     pairs_files: List[str],
     tmp_dir: str,
-    threshold: float = 1,
+    threshold_bin: float = .8,
+    threshold_asso: float = .1,
     association: bool = True,
     plot: bool = False,
     remove_tmp: bool = True,
@@ -441,14 +442,16 @@ def phage_binning(
         them first using pypairix.
     tmp_dir : str
         Path to temporary directory for intermediate files.
-    threshold : float
-        Threshold of score to bin contigs. [Default: 1.]
+    threshold_bin : float
+        Threshold of score to bin contigs. [Default: .8]
     association : bool
         Either to associate bin with a MAG or not. [Default: True]
     plot : bool
         If True make some summary plots.
     remove_tmp : bool
-        If eneabled, remove temporary files of checkV.
+        If enabled, remove temporary files of checkV.
+    threshold_bin_asso : float
+        Threshold to consider an associtaion.
     threads : int
         Number of threads to use for checkV.
     method : str
@@ -488,7 +491,7 @@ def phage_binning(
         process = sp.Popen(cmd, shell=True)
         process.communicate()
         phages_data, phage_bins = generate_phage_bins_pairs(
-            phages_data, pairs_files, threshold
+            phages_data, pairs_files, threshold_bin
         )
 
     if method == "metabat":
@@ -526,7 +529,7 @@ def phage_binning(
     for bin_id in phage_bins:
         if association:
             phage_bins[bin_id] = mth.associate_bin(
-                phage_bins[bin_id], network, contigs_data
+                phage_bins[bin_id], network, contigs_data, threshold_asso
             )
         else:
             phage_bins[bin_id]["Bin"] = "None"
@@ -657,7 +660,7 @@ def run_metabat(
     return metabat
 
 
-def resolve_matrix(mat: "np.ndarray", threshold: float = 1.0) -> List[Tuple]:
+def resolve_matrix(mat: "np.ndarray", threshold: float = .8) -> List[Tuple]:
     """Main function to bin phages contigs.
 
     From the marix of contacts associates the contigs with a lot of
@@ -672,7 +675,7 @@ def resolve_matrix(mat: "np.ndarray", threshold: float = 1.0) -> List[Tuple]:
         Matrix of the raw contacts between the contigs. Upper triangle and the
         contacts in intra below 1000bp are not kept.
     threshold : float
-        Threshold of score to bin contigs. [Default: 1.]
+        Threshold of score to bin contigs. [Default: .8]
 
     Returns:
     List of tuple:

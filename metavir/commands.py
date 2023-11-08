@@ -68,7 +68,7 @@ class Host(AbstractCommand):
 
     usage:
         host --network=FILE --binning=FILE --phages=FILE --contig-data=FILE
-        [--outfile=FILE]
+        [--outfile=FILE] [--threshold=0.1]
 
     options:
         -b, --binning=FILE      Path to the anvio binning file.
@@ -76,6 +76,8 @@ class Host(AbstractCommand):
         -n, --network=FILE      Path to the network file.
         -o, --outfile=FILE      Path where to write the output file.
         -p, --phages=FILE       Path to the file with phages contigs list.
+        -t, --threshold=FLOAT   Threshold to consider an association with a MAG.
+                                [Default: 0.1]
     """
 
     def execute(self):
@@ -98,6 +100,7 @@ class Host(AbstractCommand):
             phages_list,
             phages_list_id,
             self.args["--outfile"],
+            self.args["--threshold"],
         )
 
 
@@ -119,7 +122,7 @@ class Binning(AbstractCommand):
         binning --network=FILE --binning=FILE --phages=FILE --contigs-data=FILE --fasta=FILE
         [--checkv-db=DIR] [--depth=FILE] [--method=pairs] [--no-clean-up]
         [--outdir=DIR] [--pairs=STR] [--plot] [--random] [--threads=1]
-        [--tmpdir=DIR] [--threshold=1]
+        [--tmpdir=DIR] [--threshold-bin=0.8] [--threshold-asso=0.1]
 
     options:
         -b, --binning=FILE      Path to the anvio binning file.
@@ -141,7 +144,12 @@ class Binning(AbstractCommand):
         -p, --phages=FILE       Path to the file with phages contigs list.
         -P, --plot              If enable, make summary plots.
         -r, --random            If enable, make a random binning.
-        -s, --threshold=FLOAT   Threshold to use for binning. [Default: 1]
+        -s, --threshold-bin=FLOAT       Threshold to use for binning. 
+                                        [Default: 0.8]
+        -S, --threshold-asso=FLOAT      Threshold to use for association. If 
+                                several MAGs have value higher than this ratio 
+                                of total contatcs several association are 
+                                considered. [Default: 0.1]
         -t, --threads=INT       Number of threads to use for checkV.
                                 [Default: 1]
         -T, --tmpdir=DIR        Path to temporary directory. [Default: ./tmp]
@@ -199,7 +207,8 @@ class Binning(AbstractCommand):
             out_dir=self.args["--outdir"],
             pairs_files=pairs_files,
             tmp_dir=tmp_dir,
-            threshold=float(self.args["--threshold"]),
+            threshold_bin=float(self.args["--threshold-bin"]),
+            threshold_asso=float(self.args["--threshold-asso"]),
             association=True,
             plot=self.args["--plot"],
             remove_tmp=remove_tmp,

@@ -23,7 +23,7 @@ from typing import List
 class Subnetwork:
     """Class to handle subnetwork information of one bin."""
 
-    def __init__(self, subnetwork):
+    def __init__(self, subnetwork, threshold):
         """Initialize nodes list and their weights (number of hits with the
         associated contigs normalized by metaTOR).
 
@@ -31,6 +31,8 @@ class Subnetwork:
         -----------
         subnetwork : networkx.classes.reportviews.EdgeDataView
             Subnetwork with all edges of a given contig.
+        threshold : float
+            Threshold to consider an associtaion.
         """
         self.nodes = []
         self.weights = []
@@ -40,6 +42,7 @@ class Subnetwork:
             self.weights.append(edge[2])
         self.len = len(self.weights)
         self.scored = False
+        self.threshold = threshold
 
     def setScore(self):
         """Set scores for each associated contigs. The score is just a ratio of
@@ -116,8 +119,7 @@ class Subnetwork:
         return max_bin, max_score
 
     def getBinScore(self):
-        """Return the count of connected bin. The threshold is set to 0.2 to be
-        considered as connected.
+        """Return the count of connected bin based on a threshold.
 
         Returns:
         --------
@@ -127,7 +129,7 @@ class Subnetwork:
         c = 0
         for bin_name in self.bins:
             score = self.bins[bin_name]["score"]
-            if score >= 0.2:
+            if score >= self.threshold:
                 c += 1
         return c
 
@@ -154,6 +156,7 @@ def associate_bin(
     bin_contigs: dict,
     network: "networkx.classes.graph.Graph",
     contig_data: "pandas.DataFrame",
+    threshold: float,
 ) -> dict:
     """Function to associate one bin to one MAG.
 
@@ -168,6 +171,8 @@ def associate_bin(
         contig id the associated bin name, and either if the contig is binned
         and if it's a phage contig. The name of the keys are "id", "bin",
         "binned", "phage".
+    threshold : float
+        Threshold to consider an associtaion.
 
     Return
     ------
@@ -193,7 +198,7 @@ def associate_bin(
                 edge for edge in subnetwork if (edge[1] not in network_id)
             ]
             if len(subnetwork) > 0:
-                sub = Subnetwork(subnetwork)
+                sub = Subnetwork(subnetwork, threshold)
                 sub.setScore()
                 sub.setBinScore(contig_data)
                 bin_name, score = sub.getMaxBinScore()
@@ -226,7 +231,9 @@ def associate_bin(
     return bin_contigs
 
 
-def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
+def host_detection(
+    network, contig_data, phages_list, phages_list_id, outfile, threshold
+):
     """Main function to detect the host.
 
     Parameters:
@@ -243,7 +250,9 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
     phages_list_id : list
         List of the phages contigs IDs.
     outfile : str
-        Path  to write the ouput table.
+        Path to write the ouput table.
+    threshold : float
+        Threshold to consider an associtaion.
 
     Returns:
     --------
@@ -266,7 +275,7 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
             # Manage the case of the self interacting contigs.
             try:
                 subnetwork = network.edges(network_id, data="weight")
-                sub = Subnetwork(subnetwork)
+                sub = Subnetwork(subnetwork, threshold)
                 sub.setScore()
                 sub.setBinScore(contig_data)
                 bin_name, score = sub.getMaxBinScore()

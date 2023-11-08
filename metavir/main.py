@@ -17,8 +17,7 @@ The subcommands are:
     host        Detect bacterial host from a metaHiC network binned by metaTOR
                 given a annotated phages list.
     binning     Build phages MAGs based on metagenomic binning using metabat2
-                and the host detection from the metaHiC data.
-    pipeline    Use both others command and run them sequentially.
+                or pairs from the metaHiC data.
 """
 
 from docopt import docopt
