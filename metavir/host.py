@@ -81,7 +81,7 @@ class Subnetwork:
             #         self.bins[contig_data[node]["name"]] = {"score" : score}
             if (
                 contig_data.loc[node, "Binned"]
-                and not contig_data.loc[node, "Phage"]
+                and not contig_data.loc[node, "MGE"]
             ):
                 try:
                     self.bins[contig_data.loc[node, "Final_bin"]][
@@ -137,15 +137,20 @@ class Subnetwork:
         Returns:
         --------
         str:
-            List of bins with scores separaeted by '-' (bin_name:score).
+            List of bins with scores separaeted by ';' (bin_name|score).
         """
         score_list = []
-        for bin_name in self.bins:
-            score_list.append(f'{bin_name}:{self.bins[bin_name]["score"]:.1e}')
-        return "-".join(score_list)
+        if len(self.bins) > 1:
+            for bin_name in self.bins:
+                score_list.append(
+                    f'{bin_name}|{self.bins[bin_name]["score"]:.1e}'
+                )
+            return ";".join(score_list)
+        else:
+            return "NA"
 
 
-def asociate_bin(
+def associate_bin(
     bin_contigs: dict,
     network: "networkx.classes.graph.Graph",
     contig_data: "pandas.DataFrame",
@@ -183,7 +188,7 @@ def asociate_bin(
         # Manage the case of the self interacting contigs.
         try:
             subnetwork = network.edges(network_id, data="weight")
-            # Remove edges inside the bin.
+            # Remove edges inside the bin. Edge 0 is always the asked bins.
             subnetwork = [
                 edge for edge in subnetwork if (edge[1] not in network_id)
             ]
@@ -249,6 +254,8 @@ def host_detection(network, contig_data, phages_list, phages_list_id, outfile):
     # Compute the score with the subnetwork and return bins in each categories
     # and build the associated table.
     phage_data = pd.DataFrame(contig_data.loc[phages_list_id, :])
+    contigs_data["MGE"] = False
+    contigs_data.loc[phages_list_id, "MGE"] =True
     phage_data["Host"] = "ND"
     A, B, C = 0, 0, 0
     for contig_id in phages_list_id:

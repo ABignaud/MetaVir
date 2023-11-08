@@ -141,7 +141,7 @@ class Binning(AbstractCommand):
         -p, --phages=FILE       Path to the file with phages contigs list.
         -P, --plot              If enable, make summary plots.
         -r, --random            If enable, make a random binning.
-        -s, --threshold=FLOAT   Threshold to use for binning. [Default=1]
+        -s, --threshold=FLOAT   Threshold to use for binning. [Default: 1]
         -t, --threads=INT       Number of threads to use for checkV.
                                 [Default: 1]
         -T, --tmpdir=DIR        Path to temporary directory. [Default: ./tmp]

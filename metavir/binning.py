@@ -427,7 +427,7 @@ def phage_binning(
         other sequences.
     network : networkx.classes.graph.Graph
         MetaTOR network of the HiC data.
-    contig_data : pandas.DataFrame
+    contigs_data : pandas.DataFrame
         Table with the contig name as keys and with the values of the
         contig id the associated bin name, and either if the contig is binned
         and if it's a phage contig. The name of the keys are "id", "bin",
@@ -517,9 +517,15 @@ def phage_binning(
         fasta_phages_contigs, phage_bins, fasta_phages_bins, tmp_dir
     )
 
+    # Labelled MGE contigs if MAG association is done.
+    if association:
+        contigs_data["MGE"] = False
+        contigs_data.loc[phages_list_id, "MGE"] =True
+
+    # Associate a MGE to its host.
     for bin_id in phage_bins:
         if association:
-            phage_bins[bin_id] = mth.asociate_bin(
+            phage_bins[bin_id] = mth.associate_bin(
                 phage_bins[bin_id], network, contigs_data
             )
         else:
