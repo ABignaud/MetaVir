@@ -98,11 +98,11 @@ def import_contig_data_phages(contig_data_file, binning_result, phages_list):
     contig_data = pd.read_csv(contig_data_file, sep="\t")
     contig_data["Binned"] = False
     contig_data["Final_bin"] = "ND"
-    contig_data["Phage"] = False
+    contig_data["MGE"] = False
     phages_list_id = []
     for i in contig_data.index:
         if contig_data.loc[i, "Name"] in phages_list:
-            contig_data.loc[i, "Phage"] = True
+            contig_data.loc[i, "MGE"] = True
             phages_list_id.append(contig_data.index[i])
         try:
             contig_data.loc[i, "Final_bin"] = binning_result[

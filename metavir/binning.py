@@ -520,11 +520,6 @@ def phage_binning(
         fasta_phages_contigs, phage_bins, fasta_phages_bins, tmp_dir
     )
 
-    # Labelled MGE contigs if MAG association is done.
-    if association:
-        contigs_data["MGE"] = False
-        contigs_data.loc[phages_list_id, "MGE"] =True
-
     # Associate a MGE to its host.
     for bin_id in phage_bins:
         if association:

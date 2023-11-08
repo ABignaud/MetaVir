@@ -3,7 +3,7 @@
 # Start with metabat2 docker
 FROM metabat/metabat:latest
 
-LABEL Name=metavir Version=1.0.0
+LABEL Name=metavir Version=1.1.0
 
 WORKDIR /app
 COPY ./ /app

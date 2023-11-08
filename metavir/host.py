@@ -263,8 +263,6 @@ def host_detection(
     # Compute the score with the subnetwork and return bins in each categories
     # and build the associated table.
     phage_data = pd.DataFrame(contig_data.loc[phages_list_id, :])
-    contigs_data["MGE"] = False
-    contigs_data.loc[phages_list_id, "MGE"] =True
     phage_data["Host"] = "ND"
     A, B, C = 0, 0, 0
     for contig_id in phages_list_id:
