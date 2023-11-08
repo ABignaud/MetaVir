@@ -855,7 +855,7 @@ def update_phage_data(
         else:
             curr_bin = phages_data.loc[k, "MetaVir_bin"]
             try:
-                phage_bins[curr_bin]["Contig"].append(
+                phage_bins[curr_bin]["Contigs"].append(
                     phages_data.loc[k, "Name"]
                 )
                 phage_bins[curr_bin]["Score"] = min(
