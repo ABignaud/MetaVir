@@ -4,6 +4,8 @@ Metagenomics phage bacterial host detection and phage binning pipeline based on 
 
 The goal of this pipeline is to detect phage bacterial host and to build phage MAGs based on the contig host detected, and a classical binning of the contigs based on the covergae and the sequences.
 
+THIS MODULE ARE NOW INCLUDED ON METATOR AND IS NOW LONGER MAINTAINED HERE: https://github.com/koszullab/metaTOR
+
 ## Installation
 
 ### Requirements
